@@ -40,7 +40,12 @@ func main() {
 	defer db.Close()
 
 	cache := repo.NewRedis(redisAddr, redisPwd)
-	defer cache.Close()
+	defer func(cache *repo.RedisCache) {
+		err := cache.Close()
+		if err != nil {
+			log.Fatalf("failed close cache: %v", err)
+		}
+	}(cache)
 
 	authService := service.NewAuthService(db, cache)
 

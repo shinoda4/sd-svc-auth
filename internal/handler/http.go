@@ -2,11 +2,13 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shinoda4/sd-svc-auth/internal/repo"
 	"github.com/shinoda4/sd-svc-auth/internal/service"
 )
 
@@ -53,7 +55,12 @@ func (s *server) handleRegister(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 	if err := s.auth.Register(ctx, body.Email, body.Password); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "register failed", "details": err.Error()})
+		var e *repo.ErrUserExists
+		if errors.As(err, &e) {
+			c.JSON(http.StatusConflict, gin.H{"error": "register conflict", "details": e.Email})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "register failed", "details": err.Error()})
+		}
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "registered"})

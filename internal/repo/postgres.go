@@ -33,6 +33,16 @@ func (r *UserRepo) Close() {
 }
 
 func (r *UserRepo) CreateUser(ctx context.Context, email, password string) error {
+
+	var exists bool
+	err := r.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`, email).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("check user existence: %w", err)
+	}
+	if exists {
+		return NewErrUserExists(email)
+	}
+
 	// hash password
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -41,9 +51,11 @@ func (r *UserRepo) CreateUser(ctx context.Context, email, password string) error
 
 	_, err = r.pool.Exec(ctx,
 		`INSERT INTO users (email, password_hash) VALUES ($1, $2)`, email, string(hash))
+
 	if err != nil {
 		return fmt.Errorf("insert user: %w", err)
 	}
+
 	return nil
 }
 
