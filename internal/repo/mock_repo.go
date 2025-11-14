@@ -43,6 +43,18 @@ type MockRedis struct {
 	data map[string]string
 }
 
+func (r *MockRedis) SetBlacklist(ctx context.Context, token string, ttl time.Duration) error {
+	key := "blacklist:" + token
+	r.data[key] = "1" // 仅表示存在即可
+	return nil
+}
+
+func (r *MockRedis) DeleteRefreshToken(ctx context.Context, userID string) error {
+	key := "refresh_token:" + userID
+	delete(r.data, key)
+	return nil
+}
+
 func NewMockRedis() *MockRedis {
 	return &MockRedis{data: make(map[string]string)}
 }

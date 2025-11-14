@@ -47,7 +47,7 @@ type Claims struct {
 }
 
 func GenerateJWT(userID, email string) (string, time.Duration, error) {
-	return generateToken(userID, email, time.Duration(expireHours)*time.Second, "access")
+	return generateToken(userID, email, time.Duration(expireHours)*time.Hour, "access")
 }
 
 func GenerateRefreshJWT(userID, email string) (string, time.Duration, error) {
@@ -81,6 +81,7 @@ func ParseAndValidateRefresh(tokenStr string) (*Claims, error) {
 }
 
 func parseToken(tokenStr string) (*Claims, error) {
+	log.Println("Parsing token:", tokenStr)
 	tok, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")

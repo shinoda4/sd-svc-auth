@@ -124,5 +124,21 @@ Return:
 }
 ```
 
+### Logout
+
+Logout user.
+
+```text
+POST /api/v1/logout
+```
+
+Return:
+
+```text
+200 OK
+{
+    "message": "logout successful"
+}
+```
 
 To Be Done...
