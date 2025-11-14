@@ -21,8 +21,8 @@ func setupTestServer() *gin.Engine {
 	s := handler.NewServer(authService)
 
 	r := gin.Default()
-	r.POST("/register", s.HandleRegister)
-	r.POST("/login", s.HandleLogin)
+	r.POST("/api/v1/register", s.HandleRegister)
+	r.POST("/api/v1/login", s.HandleLogin)
 	return r
 }
 
@@ -34,13 +34,13 @@ func TestRegister(t *testing.T) {
 		"password": "123456",
 	}
 	body, _ := json.Marshal(registerPayload)
-	req, _ := http.NewRequest("POST", "/register", bytes.NewBuffer(body))
+	req, _ := http.NewRequest("POST", "/api/v1/register", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 
 	resp := httptest.NewRecorder()
 	server.ServeHTTP(resp, req)
 
-	if resp.Code != http.StatusOK {
+	if resp.Code != http.StatusCreated {
 		t.Fatalf("register failed: code=%d body=%s", resp.Code, resp.Body.String())
 	}
 }
@@ -52,13 +52,13 @@ func TestLogin(t *testing.T) {
 		"password": "123456",
 	}
 	body, _ := json.Marshal(registerPayload)
-	req, _ := http.NewRequest("POST", "/register", bytes.NewBuffer(body))
+	req, _ := http.NewRequest("POST", "/api/v1/register", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 
 	resp := httptest.NewRecorder()
 	server.ServeHTTP(resp, req)
 
-	if resp.Code != http.StatusOK {
+	if resp.Code != http.StatusCreated {
 		t.Fatalf("register failed: code=%d body=%s", resp.Code, resp.Body.String())
 	}
 	loginPayload := map[string]string{
@@ -66,7 +66,7 @@ func TestLogin(t *testing.T) {
 		"password": "123456",
 	}
 	body2, _ := json.Marshal(loginPayload)
-	req2, _ := http.NewRequest("POST", "/login", bytes.NewBuffer(body2))
+	req2, _ := http.NewRequest("POST", "/api/v1/login", bytes.NewBuffer(body2))
 	req2.Header.Set("Content-Type", "application/json")
 
 	resp2 := httptest.NewRecorder()
@@ -78,7 +78,7 @@ func TestLogin(t *testing.T) {
 
 	var result map[string]string
 	_ = json.Unmarshal(resp2.Body.Bytes(), &result)
-	if result["token"] == "" {
+	if result["access_token"] == "" {
 		t.Fatalf("expected token, got empty")
 	}
 }
