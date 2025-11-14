@@ -11,6 +11,17 @@ type RedisCache struct {
 	client *redis.Client
 }
 
+func (r *RedisCache) SetBlacklist(ctx context.Context, token string, ttl time.Duration) error {
+	// 每个 token 一个独立 key
+	key := "blacklist:" + token
+	return r.client.Set(ctx, key, "1", ttl).Err()
+}
+
+func (r *RedisCache) DeleteRefreshToken(ctx context.Context, userID string) error {
+	key := "refresh_token:" + userID
+	return r.client.Del(ctx, key).Err()
+}
+
 func NewRedis(addr, password string) *RedisCache {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     addr,

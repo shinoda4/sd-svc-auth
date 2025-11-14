@@ -13,27 +13,40 @@ import (
 	"github.com/shinoda4/sd-svc-auth/internal/service"
 )
 
-func setupTestServer() *gin.Engine {
+func setupFullTestServer() *gin.Engine {
 	gin.SetMode(gin.TestMode)
-	db := repo.NewMockUserRepo() // 下面会定义 mock
+	db := repo.NewMockUserRepo()
 	cache := repo.NewMockRedis()
 	authService := service.NewAuthService(db, cache)
 	s := handler.NewServer(authService)
 
 	r := gin.Default()
-	r.POST("/api/v1/register", s.HandleRegister)
-	r.POST("/api/v1/login", s.HandleLogin)
+	api := r.Group("/api/v1")
+	{
+		api.POST("/register", s.HandleRegister)
+		api.POST("/login", s.HandleLogin)
+		api.POST("/refresh", s.HandleRefresh)
+		api.POST("/verify", s.HandleVerify)
+		api.POST("/logout", s.HandleLogout)
+	}
+
+	auth := api.Group("/authorized")
+	auth.Use(s.JwtMiddleware()) // 用测试版中间件（见下）
+	{
+		auth.GET("/me", s.HandleMe)
+	}
+
 	return r
 }
 
+// ---------------- REGISTER ----------------
 func TestRegister(t *testing.T) {
-	server := setupTestServer()
+	server := setupFullTestServer()
 
-	registerPayload := map[string]string{
+	body, _ := json.Marshal(map[string]string{
 		"email":    "test@example.com",
 		"password": "123456",
-	}
-	body, _ := json.Marshal(registerPayload)
+	})
 	req, _ := http.NewRequest("POST", "/api/v1/register", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 
@@ -45,40 +58,160 @@ func TestRegister(t *testing.T) {
 	}
 }
 
+// ---------------- LOGIN ----------------
 func TestLogin(t *testing.T) {
-	server := setupTestServer()
-	registerPayload := map[string]string{
+	server := setupFullTestServer()
+
+	// 先注册
+	bodyReg, _ := json.Marshal(map[string]string{
 		"email":    "test@example.com",
 		"password": "123456",
+	})
+	reqReg, _ := http.NewRequest("POST", "/api/v1/register", bytes.NewBuffer(bodyReg))
+	reqReg.Header.Set("Content-Type", "application/json")
+	respReg := httptest.NewRecorder()
+	server.ServeHTTP(respReg, reqReg)
+
+	if respReg.Code != http.StatusCreated {
+		t.Fatalf("register failed: %s", respReg.Body.String())
 	}
+
+	// 登录
+	bodyLogin, _ := json.Marshal(map[string]string{
+		"email":    "test@example.com",
+		"password": "123456",
+	})
+	reqLogin, _ := http.NewRequest("POST", "/api/v1/login", bytes.NewBuffer(bodyLogin))
+	reqLogin.Header.Set("Content-Type", "application/json")
+
+	respLogin := httptest.NewRecorder()
+	server.ServeHTTP(respLogin, reqLogin)
+
+	if respLogin.Code != http.StatusOK {
+		t.Fatalf("login failed: %s", respLogin.Body.String())
+	}
+}
+
+// ---------------- REFRESH ----------------
+func TestRefresh(t *testing.T) {
+	server := setupFullTestServer()
+
+	// 注册并登录
+	registerPayload := map[string]string{"email": "test@example.com", "password": "123456"}
 	body, _ := json.Marshal(registerPayload)
-	req, _ := http.NewRequest("POST", "/api/v1/register", bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
+	server.ServeHTTP(httptest.NewRecorder(),
+		mustReq("POST", "/api/v1/register", body))
 
 	resp := httptest.NewRecorder()
-	server.ServeHTTP(resp, req)
+	server.ServeHTTP(resp, mustReq("POST", "/api/v1/login", body))
 
-	if resp.Code != http.StatusCreated {
-		t.Fatalf("register failed: code=%d body=%s", resp.Code, resp.Body.String())
-	}
-	loginPayload := map[string]string{
-		"email":    "test@example.com",
-		"password": "123456",
-	}
-	body2, _ := json.Marshal(loginPayload)
-	req2, _ := http.NewRequest("POST", "/api/v1/login", bytes.NewBuffer(body2))
-	req2.Header.Set("Content-Type", "application/json")
+	var reply map[string]any
+	_ = json.Unmarshal(resp.Body.Bytes(), &reply)
+	refreshToken := reply["refresh_token"].(string)
+
+	// refresh
+	refPayload := map[string]string{"refresh_token": refreshToken}
+	body2, _ := json.Marshal(refPayload)
 
 	resp2 := httptest.NewRecorder()
-	server.ServeHTTP(resp2, req2)
+	server.ServeHTTP(resp2, mustReq("POST", "/api/v1/refresh", body2))
 
 	if resp2.Code != http.StatusOK {
-		t.Fatalf("login failed: code=%d body=%s", resp2.Code, resp2.Body.String())
+		t.Fatalf("refresh failed: %s", resp2.Body.String())
 	}
+}
 
-	var result map[string]string
-	_ = json.Unmarshal(resp2.Body.Bytes(), &result)
-	if result["access_token"] == "" {
-		t.Fatalf("expected token, got empty")
+// ---------------- VERIFY ----------------
+func TestVerify(t *testing.T) {
+	server := setupFullTestServer()
+
+	// 注册 + 登录
+	reg := map[string]string{"email": "test@example.com", "password": "123456"}
+	body, _ := json.Marshal(reg)
+	server.ServeHTTP(httptest.NewRecorder(), mustReq("POST", "/api/v1/register", body))
+
+	resp := httptest.NewRecorder()
+	server.ServeHTTP(resp, mustReq("POST", "/api/v1/login", body))
+
+	var login map[string]any
+	_ = json.Unmarshal(resp.Body.Bytes(), &login)
+	access := login["access_token"].(string)
+
+	verifyPayload := map[string]string{"token": access}
+	vbody, _ := json.Marshal(verifyPayload)
+
+	resp2 := httptest.NewRecorder()
+	server.ServeHTTP(resp2, mustReq("POST", "/api/v1/verify", vbody))
+
+	if resp2.Code != http.StatusOK {
+		t.Fatalf("verify failed: %s", resp2.Body.String())
 	}
+}
+
+// ---------------- /me ----------------
+func TestMe(t *testing.T) {
+	server := setupFullTestServer()
+
+	// 注册 + 登录
+	reg := map[string]string{"email": "aaa@example.com", "password": "123456"}
+	body, _ := json.Marshal(reg)
+	server.ServeHTTP(httptest.NewRecorder(), mustReq("POST", "/api/v1/register", body))
+
+	resp := httptest.NewRecorder()
+	server.ServeHTTP(resp, mustReq("POST", "/api/v1/login", body))
+
+	var login map[string]any
+	_ = json.Unmarshal(resp.Body.Bytes(), &login)
+	access := login["access_token"].(string)
+
+	req := mustReq("GET", "/api/v1/authorized/me", nil)
+	req.Header.Set("Authorization", "Bearer "+access)
+
+	resp2 := httptest.NewRecorder()
+	server.ServeHTTP(resp2, req)
+
+	if resp2.Code != http.StatusOK {
+		t.Fatalf("/me failed: %s", resp2.Body.String())
+	}
+}
+
+// ---------------- LOGOUT ----------------
+func TestLogout(t *testing.T) {
+	server := setupFullTestServer()
+
+	// 注册 + 登录
+	reg := map[string]string{"email": "aaa@example.com", "password": "123456"}
+	body, _ := json.Marshal(reg)
+	server.ServeHTTP(httptest.NewRecorder(), mustReq("POST", "/api/v1/register", body))
+
+	resp := httptest.NewRecorder()
+	server.ServeHTTP(resp, mustReq("POST", "/api/v1/login", body))
+
+	var login map[string]any
+	_ = json.Unmarshal(resp.Body.Bytes(), &login)
+	access := login["access_token"].(string)
+
+	// logout
+	req := mustReq("POST", "/api/v1/logout", nil)
+	req.Header.Set("Authorization", "Bearer "+access)
+
+	resp2 := httptest.NewRecorder()
+	server.ServeHTTP(resp2, req)
+
+	if resp2.Code != http.StatusOK {
+		t.Fatalf("logout failed: %s", resp2.Body.String())
+	}
+}
+
+// small helper
+func mustReq(method, path string, body []byte) *http.Request {
+	var buf *bytes.Buffer
+	if body != nil {
+		buf = bytes.NewBuffer(body)
+	} else {
+		buf = bytes.NewBuffer(nil)
+	}
+	req, _ := http.NewRequest(method, path, buf)
+	req.Header.Set("Content-Type", "application/json")
+	return req
 }

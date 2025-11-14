@@ -34,12 +34,13 @@ func StartServer(authService *service.AuthService) {
 	api.POST("/register", s.HandleRegister)
 	api.POST("/login", s.HandleLogin)
 	api.POST("/refresh", s.HandleRefresh)
-	api.POST("/verify", s.handleVerify)
+	api.POST("/verify", s.HandleVerify)
+	api.POST("/logout", s.HandleLogout)
 
 	authorized := api.Group("/authorized")
-	authorized.Use(s.jwtMiddleware())
+	authorized.Use(s.JwtMiddleware())
 	{
-		authorized.GET("/me", s.handleMe)
+		authorized.GET("/me", s.HandleMe)
 	}
 
 	srv := &http.Server{
@@ -140,12 +141,12 @@ func (s *Server) HandleRefresh(c *gin.Context) {
 	})
 }
 
-func (s *Server) handleMe(c *gin.Context) {
+func (s *Server) HandleMe(c *gin.Context) {
 	claims, _ := c.Get("claims")
 	c.JSON(http.StatusOK, gin.H{"claims": claims})
 }
 
-func (s *Server) handleVerify(c *gin.Context) {
+func (s *Server) HandleVerify(c *gin.Context) {
 	var body struct {
 		AccessToken string `json:"token" binding:"required"`
 	}
@@ -166,7 +167,23 @@ func (s *Server) handleVerify(c *gin.Context) {
 
 }
 
-func (s *Server) jwtMiddleware() gin.HandlerFunc {
+func (s *Server) HandleLogout(c *gin.Context) {
+	h := c.GetHeader("Authorization")
+	if len(h) < 7 || h[:7] != "Bearer " {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid token format"})
+		return
+	}
+	token := h[7:] // 去掉 "Bearer " 前缀
+
+	if err := s.Auth.Logout(c.Request.Context(), token); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "logout successful"})
+}
+
+func (s *Server) JwtMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		h := c.GetHeader("Authorization")
 		if len(h) < 7 || h[:7] != "Bearer " {

@@ -2,15 +2,15 @@
 
 ## Public
 
-- [x] Register
-- [x] Login
-- [x] Refresh Token
-- [x] Verify Token
+- [x] `api/v1/register`
+- [x] `api/v1/login`
+- [x] `api/v1/refresh`
+- [x] `api/v1/verfiy`
 
 ## Authorized
 
-- [x] Me
-- [ ] Logout
-- [ ] Change Password
-- [ ] Forgot Password
-- [ ] Reset Password
+- [x] `api/v1/authorized/me`
+- [x] `api/v1/authorized/logout`
+- [ ] `api/v1/authorized/change-password`
+- [ ] `api/v1/authorized/forgot-password`
+- [ ] `api/v1/authorized/reset-password`
