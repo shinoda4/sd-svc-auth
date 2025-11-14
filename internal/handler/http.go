@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -28,10 +29,13 @@ func StartServer(authService *service.AuthService) {
 
 	r := gin.Default()
 
-	r.POST("/register", s.HandleRegister)
-	r.POST("/login", s.HandleLogin)
+	api := r.Group("/api/v1")
 
-	authorized := r.Group("/")
+	api.POST("/register", s.HandleRegister)
+	api.POST("/login", s.HandleLogin)
+	api.POST("/refresh", s.HandleRefresh)
+
+	authorized := api.Group("/authorized")
 	authorized.Use(s.jwtMiddleware())
 	{
 		authorized.GET("/me", s.handleMe)
@@ -52,6 +56,13 @@ type registerBody struct {
 func (s *Server) HandleRegister(c *gin.Context) {
 	var body registerBody
 	if err := c.ShouldBindJSON(&body); err != nil {
+		if errors.Is(err, io.EOF) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "empty request body",
+			})
+			return
+		}
+
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -60,13 +71,13 @@ func (s *Server) HandleRegister(c *gin.Context) {
 	if err := s.Auth.Register(ctx, body.Email, body.Password); err != nil {
 		var e *repo.ErrUserExists
 		if errors.As(err, &e) {
-			c.JSON(http.StatusConflict, gin.H{"error": "register user exists", "details": e.Email})
+			c.JSON(http.StatusConflict, gin.H{"error": "register email exists", "details": e.Email})
 		} else {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "register failed", "details": err.Error()})
 		}
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "registered"})
+	c.JSON(http.StatusCreated, gin.H{"message": "registered"})
 }
 
 type loginBody struct {
@@ -77,18 +88,55 @@ type loginBody struct {
 func (s *Server) HandleLogin(c *gin.Context) {
 	var body loginBody
 	if err := c.ShouldBindJSON(&body); err != nil {
+		if errors.Is(err, io.EOF) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "empty request body"})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	token, ttl, err := s.Auth.Login(ctx, body.Email, body.Password)
+	accessToken, refreshToken, accessTTL, refreshTTL, err := s.Auth.Login(ctx, body.Email, body.Password)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"token": token, "expires_in": int(ttl.Seconds())})
+
+	c.JSON(http.StatusOK, gin.H{
+		"access_token":       accessToken,
+		"refresh_token":      refreshToken,
+		"expires_in":         int(accessTTL.Seconds()),
+		"refresh_expires_in": int(refreshTTL.Seconds()),
+	})
+}
+
+type refreshBody struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+func (s *Server) HandleRefresh(c *gin.Context) {
+	var body refreshBody
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "refresh_token is required"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	newAccess, accessTTL, err := s.Auth.Refresh(ctx, body.RefreshToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"access_token": newAccess,
+		"expires_in":   int(accessTTL.Seconds()),
+	})
 }
 
 func (s *Server) handleMe(c *gin.Context) {

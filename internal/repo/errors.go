@@ -1,6 +1,9 @@
 package repo
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type ErrUserExists struct {
 	Email string
@@ -13,3 +16,5 @@ func (e *ErrUserExists) Error() string {
 func NewErrUserExists(email string) error {
 	return &ErrUserExists{Email: email}
 }
+
+var ErrNotFound = errors.New("not found")

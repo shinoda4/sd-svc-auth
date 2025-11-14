@@ -2,6 +2,7 @@ package token
 
 import (
 	"errors"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -10,13 +11,16 @@ import (
 )
 
 var (
-	secret      []byte
-	expireHours int
+	secret       []byte
+	expireHours  int
+	refreshHours int
 )
 
 func init() {
+	log.Println("JWT initialing...")
 	secret = []byte(getenv("JWT_SECRET", "change_me"))
-	expireHours = getenvInt("JWT_EXPIRE_HOURS", 72)
+	expireHours = getenvInt("JWT_EXPIRE_HOURS", 1)
+	refreshHours = getenvInt("JWT_REFRESH_HOURS", 72)
 }
 
 func getenv(key, def string) string {
@@ -42,7 +46,15 @@ type Claims struct {
 }
 
 func GenerateJWT(userID, email string) (string, time.Duration, error) {
-	exp := time.Now().Add(time.Duration(expireHours) * time.Hour)
+	return generateToken(userID, email, time.Duration(expireHours)*time.Hour)
+}
+
+func GenerateRefreshJWT(userID, email string) (string, time.Duration, error) {
+	return generateToken(userID, email, time.Duration(refreshHours)*time.Hour)
+}
+
+func generateToken(userID, email string, duration time.Duration) (string, time.Duration, error) {
+	exp := time.Now().Add(duration)
 	claims := &Claims{
 		UserID: userID,
 		Email:  email,
@@ -56,12 +68,17 @@ func GenerateJWT(userID, email string) (string, time.Duration, error) {
 	if err != nil {
 		return "", 0, err
 	}
-	return ss, time.Until(exp), nil
+	return ss, duration, nil
+}
+func ParseAndValidate(tokenStr string) (*Claims, error) {
+	return parseToken(tokenStr)
 }
 
-func ParseAndValidate(tokenStr string) (*Claims, error) {
+func ParseAndValidateRefresh(tokenStr string) (*Claims, error) {
+	return parseToken(tokenStr)
+}
+func parseToken(tokenStr string) (*Claims, error) {
 	tok, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		// Validate signing method
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")
 		}

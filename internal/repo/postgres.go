@@ -2,7 +2,6 @@ package repo
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -63,7 +62,7 @@ func (r *UserRepo) GetUserByEmail(ctx context.Context, email string) (service.Us
 	row := r.pool.QueryRow(ctx, `SELECT id, email, password_hash FROM users WHERE email=$1`, email)
 	u := &User{}
 	if err := row.Scan(&u.ID, &u.Email, &u.PasswordHash); err != nil {
-		return nil, errors.New("user not found")
+		return nil, ErrNotFound
 	}
 	return u, nil
 }
