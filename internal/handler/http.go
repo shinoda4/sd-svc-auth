@@ -12,12 +12,15 @@ import (
 	"github.com/shinoda4/sd-svc-auth/internal/service"
 )
 
-type server struct {
-	auth *service.AuthService
+type Server struct {
+	Auth *service.AuthService
 }
 
+func NewServer(auth *service.AuthService) *Server {
+	return &Server{Auth: auth}
+}
 func StartServer(authService *service.AuthService) {
-	s := &server{auth: authService}
+	s := &Server{Auth: authService}
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {
 		port = "8080"
@@ -25,8 +28,8 @@ func StartServer(authService *service.AuthService) {
 
 	r := gin.Default()
 
-	r.POST("/register", s.handleRegister)
-	r.POST("/login", s.handleLogin)
+	r.POST("/register", s.HandleRegister)
+	r.POST("/login", s.HandleLogin)
 
 	authorized := r.Group("/")
 	authorized.Use(s.jwtMiddleware())
@@ -46,7 +49,7 @@ type registerBody struct {
 	Password string `json:"password" binding:"required,min=6"`
 }
 
-func (s *server) handleRegister(c *gin.Context) {
+func (s *Server) HandleRegister(c *gin.Context) {
 	var body registerBody
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -54,10 +57,10 @@ func (s *server) handleRegister(c *gin.Context) {
 	}
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
-	if err := s.auth.Register(ctx, body.Email, body.Password); err != nil {
+	if err := s.Auth.Register(ctx, body.Email, body.Password); err != nil {
 		var e *repo.ErrUserExists
 		if errors.As(err, &e) {
-			c.JSON(http.StatusConflict, gin.H{"error": "register conflict", "details": e.Email})
+			c.JSON(http.StatusConflict, gin.H{"error": "register user exists", "details": e.Email})
 		} else {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "register failed", "details": err.Error()})
 		}
@@ -71,7 +74,7 @@ type loginBody struct {
 	Password string `json:"password" binding:"required"`
 }
 
-func (s *server) handleLogin(c *gin.Context) {
+func (s *Server) HandleLogin(c *gin.Context) {
 	var body loginBody
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -80,7 +83,7 @@ func (s *server) handleLogin(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	token, ttl, err := s.auth.Login(ctx, body.Email, body.Password)
+	token, ttl, err := s.Auth.Login(ctx, body.Email, body.Password)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
@@ -88,12 +91,12 @@ func (s *server) handleLogin(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"token": token, "expires_in": int(ttl.Seconds())})
 }
 
-func (s *server) handleMe(c *gin.Context) {
+func (s *Server) handleMe(c *gin.Context) {
 	claims, _ := c.Get("claims")
 	c.JSON(http.StatusOK, gin.H{"claims": claims})
 }
 
-func (s *server) jwtMiddleware() gin.HandlerFunc {
+func (s *Server) jwtMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		h := c.GetHeader("Authorization")
 		if len(h) < 7 || h[:7] != "Bearer " {
@@ -101,7 +104,7 @@ func (s *server) jwtMiddleware() gin.HandlerFunc {
 			return
 		}
 		tokenStr := h[7:]
-		claims, err := s.auth.ValidateToken(c.Request.Context(), tokenStr)
+		claims, err := s.Auth.ValidateToken(c.Request.Context(), tokenStr)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 			return
@@ -109,37 +112,4 @@ func (s *server) jwtMiddleware() gin.HandlerFunc {
 		c.Set("claims", claims)
 		c.Next()
 	}
-}
-
-func RegisterRoutes(r *gin.Engine, authService *service.AuthService) {
-	r.POST("/register", func(c *gin.Context) {
-		var body struct {
-			Email, Password string
-		}
-		if err := c.ShouldBindJSON(&body); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
-			return
-		}
-		if err := authService.Register(c, body.Email, body.Password); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"message": "user registered"})
-	})
-
-	r.POST("/login", func(c *gin.Context) {
-		var body struct {
-			Email, Password string
-		}
-		if err := c.ShouldBindJSON(&body); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
-			return
-		}
-		token, ttl, err := authService.Login(c, body.Email, body.Password)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"token": token, "expires_in": int(ttl.Seconds())})
-	})
 }

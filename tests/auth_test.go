@@ -13,22 +13,22 @@ import (
 	"github.com/shinoda4/sd-svc-auth/internal/service"
 )
 
-// 构建一个伪服务实例（使用内存数据库）
 func setupTestServer() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	db := repo.NewMockUserRepo() // 下面会定义 mock
 	cache := repo.NewMockRedis()
 	authService := service.NewAuthService(db, cache)
+	s := handler.NewServer(authService)
 
 	r := gin.Default()
-	handler.RegisterRoutes(r, authService)
+	r.POST("/register", s.HandleRegister)
+	r.POST("/login", s.HandleLogin)
 	return r
 }
 
-func TestRegisterAndLogin(t *testing.T) {
+func TestRegister(t *testing.T) {
 	server := setupTestServer()
 
-	// 1. 注册
 	registerPayload := map[string]string{
 		"email":    "test@example.com",
 		"password": "123456",
@@ -43,8 +43,24 @@ func TestRegisterAndLogin(t *testing.T) {
 	if resp.Code != http.StatusOK {
 		t.Fatalf("register failed: code=%d body=%s", resp.Code, resp.Body.String())
 	}
+}
 
-	// 2. 登录
+func TestLogin(t *testing.T) {
+	server := setupTestServer()
+	registerPayload := map[string]string{
+		"email":    "test@example.com",
+		"password": "123456",
+	}
+	body, _ := json.Marshal(registerPayload)
+	req, _ := http.NewRequest("POST", "/register", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp := httptest.NewRecorder()
+	server.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusOK {
+		t.Fatalf("register failed: code=%d body=%s", resp.Code, resp.Body.String())
+	}
 	loginPayload := map[string]string{
 		"email":    "test@example.com",
 		"password": "123456",
