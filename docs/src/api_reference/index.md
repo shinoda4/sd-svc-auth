@@ -67,9 +67,36 @@ POST /api/v1/refresh
 Return:
 
 ```text
+200 OK
 {
     "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1aWQiOiJlMWJkZDE0YS1lMDgzLTRkY2UtYjc0OC04MDFlZWFiNTQzNzMiLCJlbWFpbCI6InVzZXJAZXhhbXBsZS5jb20iLCJleHAiOjE3NjMxMzQwMDcsImlhdCI6MTc2MzEzMDQwN30.NlF9yGojW9gdQ3VIOpMv1rVpJ0vy9ODtlhiyko1Da9E",
     "expires_in": 3600
+}
+```
+
+### Verify
+
+Verify token is valid.
+
+```text
+POST /api/v1/verify
+{
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwidWlkIjoiZTFiZGQxNGEtZTA4My00ZGNlLWI3NDgtODAxZWVhYjU0MzczIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIiwiZXhwIjoxNzYzMTM4MDc1LCJpYXQiOjE3NjMxMzgwNzR9.pzVDuKoyUu5EAv-E_vi-fhitSEruqNUZhmNduNzLsms"
+}
+```
+
+Return:
+
+```text
+200 OK
+{
+    "token": {
+        "token_type": "access",
+        "uid": "e1bdd14a-e083-4dce-b748-801eeab54373",
+        "email": "user@example.com",
+        "exp": 1763141504,
+        "iat": 1763137904
+    }
 }
 ```
 

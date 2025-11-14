@@ -40,24 +40,26 @@ func getenvInt(key string, def int) int {
 }
 
 type Claims struct {
-	UserID string `json:"uid"`
-	Email  string `json:"email"`
+	TokenType string `json:"token_type"`
+	UserID    string `json:"uid"`
+	Email     string `json:"email"`
 	jwt.RegisteredClaims
 }
 
 func GenerateJWT(userID, email string) (string, time.Duration, error) {
-	return generateToken(userID, email, time.Duration(expireHours)*time.Hour)
+	return generateToken(userID, email, time.Duration(expireHours)*time.Second, "access")
 }
 
 func GenerateRefreshJWT(userID, email string) (string, time.Duration, error) {
-	return generateToken(userID, email, time.Duration(refreshHours)*time.Hour)
+	return generateToken(userID, email, time.Duration(refreshHours)*time.Hour, "refresh")
 }
 
-func generateToken(userID, email string, duration time.Duration) (string, time.Duration, error) {
+func generateToken(userID, email string, duration time.Duration, tokenType string) (string, time.Duration, error) {
 	exp := time.Now().Add(duration)
 	claims := &Claims{
-		UserID: userID,
-		Email:  email,
+		TokenType: tokenType,
+		UserID:    userID,
+		Email:     email,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(exp),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -77,6 +79,7 @@ func ParseAndValidate(tokenStr string) (*Claims, error) {
 func ParseAndValidateRefresh(tokenStr string) (*Claims, error) {
 	return parseToken(tokenStr)
 }
+
 func parseToken(tokenStr string) (*Claims, error) {
 	tok, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {

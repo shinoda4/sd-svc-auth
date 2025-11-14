@@ -34,6 +34,7 @@ func StartServer(authService *service.AuthService) {
 	api.POST("/register", s.HandleRegister)
 	api.POST("/login", s.HandleLogin)
 	api.POST("/refresh", s.HandleRefresh)
+	api.POST("/verify", s.handleVerify)
 
 	authorized := api.Group("/authorized")
 	authorized.Use(s.jwtMiddleware())
@@ -142,6 +143,27 @@ func (s *Server) HandleRefresh(c *gin.Context) {
 func (s *Server) handleMe(c *gin.Context) {
 	claims, _ := c.Get("claims")
 	c.JSON(http.StatusOK, gin.H{"claims": claims})
+}
+
+func (s *Server) handleVerify(c *gin.Context) {
+	var body struct {
+		AccessToken string `json:"token" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+	claims, err := s.Auth.ValidateToken(ctx, body.AccessToken)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"token": claims,
+	})
+
 }
 
 func (s *Server) jwtMiddleware() gin.HandlerFunc {
