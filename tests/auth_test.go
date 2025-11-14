@@ -31,17 +31,12 @@ func setupFullTestServer() *gin.Engine {
 	}
 
 	auth := api.Group("/authorized")
-	auth.Use(s.JwtMiddlewareForTest()) // 用测试版中间件（见下）
+	auth.Use(s.JwtMiddleware()) // 用测试版中间件（见下）
 	{
 		auth.GET("/me", s.HandleMe)
 	}
 
 	return r
-}
-
-// ------- 扩展：提供一个不会直接 exit 的中间件包装 -------
-func (s *handler.Server) JwtMiddlewareForTest() gin.HandlerFunc {
-	return s.JwtMiddleware()
 }
 
 // ---------------- REGISTER ----------------
@@ -198,7 +193,7 @@ func TestLogout(t *testing.T) {
 
 	// logout
 	req := mustReq("POST", "/api/v1/logout", nil)
-	req.Header.Set("Authorization", access)
+	req.Header.Set("Authorization", "Bearer "+access)
 
 	resp2 := httptest.NewRecorder()
 	server.ServeHTTP(resp2, req)
