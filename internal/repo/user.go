@@ -16,7 +16,7 @@ func (r *UserRepo) GetUserByVerifyToken(ctx context.Context, token string) (serv
 	err := r.db.GetContext(ctx, u,
 		`SELECT id, email, username FROM users WHERE verify_token=$1`, token)
 	if err != nil {
-		return nil, fmt.Errorf(err.Error())
+		return nil, fmt.Errorf("query user failed: %w", err)
 	}
 	return u, nil
 }
