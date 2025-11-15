@@ -31,7 +31,7 @@ func (r *UserRepo) Close() {
 	r.pool.Close()
 }
 
-func (r *UserRepo) CreateUser(ctx context.Context, email, password string) error {
+func (r *UserRepo) CreateUser(ctx context.Context, email, username, password string) error {
 
 	var exists bool
 	err := r.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`, email).Scan(&exists)
@@ -49,7 +49,7 @@ func (r *UserRepo) CreateUser(ctx context.Context, email, password string) error
 	}
 
 	_, err = r.pool.Exec(ctx,
-		`INSERT INTO users (email, password_hash) VALUES ($1, $2)`, email, string(hash))
+		`INSERT INTO users (email, username, password_hash) VALUES ($1, $2, $3)`, email, username, string(hash))
 
 	if err != nil {
 		return fmt.Errorf("insert user: %w", err)

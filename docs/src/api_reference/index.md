@@ -16,6 +16,7 @@ Create a new user.
 POST /api/v1/register
 {
     "email": "user@example.com",
+    "username": "hijack",
     "password": "123456"
 }
 ```

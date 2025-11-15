@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shinoda4/sd-svc-auth/internal/email"
 	"github.com/shinoda4/sd-svc-auth/internal/repo"
 	"github.com/shinoda4/sd-svc-auth/internal/service"
 )
@@ -52,6 +53,7 @@ func StartServer(authService *service.AuthService) {
 
 type registerBody struct {
 	Email    string `json:"email" binding:"required,email"`
+	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required,min=6"`
 }
 
@@ -70,13 +72,18 @@ func (s *Server) HandleRegister(c *gin.Context) {
 	}
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
-	if err := s.Auth.Register(ctx, body.Email, body.Password); err != nil {
+	if err := s.Auth.Register(ctx, body.Email, body.Username, body.Password); err != nil {
 		var e *repo.ErrUserExists
 		if errors.As(err, &e) {
 			c.JSON(http.StatusConflict, gin.H{"error": "register email exists", "details": e.Email})
 		} else {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "register failed", "details": err.Error()})
 		}
+		return
+	}
+
+	if err := email.SendWelcomeEmail(body.Email, body.Username); err != nil {
+		c.JSON(500, gin.H{"error": "注册成功但邮件发送失败"})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"message": "registered"})
