@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jmoiron/sqlx"
 	"github.com/shinoda4/sd-svc-auth/internal/service"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -16,25 +16,27 @@ type User struct {
 }
 
 type UserRepo struct {
-	pool *pgxpool.Pool
+	db *sqlx.DB
 }
 
-func NewPostgres(ctx context.Context, dsn string) (*UserRepo, error) {
-	pool, err := pgxpool.New(ctx, dsn)
+func NewPostgres(dsn string) (*UserRepo, error) {
+	db, err := sqlx.Connect("postgres", dsn)
 	if err != nil {
 		return nil, err
 	}
-	return &UserRepo{pool: pool}, nil
+	return &UserRepo{db: db}, nil
 }
 
 func (r *UserRepo) Close() {
-	r.pool.Close()
+	err := r.db.Close()
+	if err != nil {
+		return
+	}
 }
 
 func (r *UserRepo) CreateUser(ctx context.Context, email, username, password string) error {
-
 	var exists bool
-	err := r.pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`, email).Scan(&exists)
+	err := r.db.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`, email)
 	if err != nil {
 		return fmt.Errorf("check user existence: %w", err)
 	}
@@ -43,12 +45,8 @@ func (r *UserRepo) CreateUser(ctx context.Context, email, username, password str
 	}
 
 	// hash password
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
-
-	_, err = r.pool.Exec(ctx,
+	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	_, err = r.db.ExecContext(ctx,
 		`INSERT INTO users (email, username, password_hash) VALUES ($1, $2, $3)`, email, username, string(hash))
 
 	if err != nil {
@@ -59,9 +57,9 @@ func (r *UserRepo) CreateUser(ctx context.Context, email, username, password str
 }
 
 func (r *UserRepo) GetUserByEmail(ctx context.Context, email string) (service.UserEntity, error) {
-	row := r.pool.QueryRow(ctx, `SELECT id, email, password_hash FROM users WHERE email=$1`, email)
 	u := &User{}
-	if err := row.Scan(&u.ID, &u.Email, &u.PasswordHash); err != nil {
+	err := r.db.GetContext(ctx, u, `SELECT id, email, password_hash FROM users WHERE email=$1`, email)
+	if err != nil {
 		return nil, ErrNotFound
 	}
 	return u, nil

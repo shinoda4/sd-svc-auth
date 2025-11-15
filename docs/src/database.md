@@ -13,6 +13,16 @@ running the following commands to migrate database.
 > docker compose up -d
 > ```
 
+## Migration
+
 ```shell
-psql -U sd_auth -h 127.0.0.1 -f sql/init.sql
+brew install golang-migrate
+```
+
+```shell
+migrate create -ext sql -dir db/migrations [name]
+```
+
+```shell
+migrate -source file://db/migrations -database "postgres://sd_auth:sd_pass@localhost:5432/sd_auth?sslmode=disable" up
 ```
