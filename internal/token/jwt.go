@@ -81,7 +81,6 @@ func ParseAndValidateRefresh(tokenStr string) (*Claims, error) {
 }
 
 func parseToken(tokenStr string) (*Claims, error) {
-	log.Println("Parsing token:", tokenStr)
 	tok, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")

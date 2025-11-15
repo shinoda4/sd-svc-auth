@@ -10,7 +10,7 @@ import (
 )
 
 type UserRepository interface {
-	CreateUser(ctx context.Context, email, password string) error
+	CreateUser(ctx context.Context, email, username, password string) error
 	GetUserByEmail(ctx context.Context, email string) (UserEntity, error)
 }
 
@@ -36,8 +36,8 @@ func NewAuthService(db UserRepository, cache CacheRepository) *AuthService {
 	return &AuthService{db: db, cache: cache}
 }
 
-func (s *AuthService) Register(ctx context.Context, email, password string) error {
-	return s.db.CreateUser(ctx, email, password)
+func (s *AuthService) Register(ctx context.Context, email, username, password string) error {
+	return s.db.CreateUser(ctx, email, username, password)
 }
 
 func (s *AuthService) Login(ctx context.Context, email, password string) (accessToken string, refreshToken string, accessTTL, refreshTTL time.Duration, err error) {
