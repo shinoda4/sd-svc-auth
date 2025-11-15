@@ -2,21 +2,35 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
+	"github.com/shinoda4/sd-svc-auth/internal/email"
 	"github.com/shinoda4/sd-svc-auth/internal/token"
 )
 
+func GenerateVerifyToken() string {
+	b := make([]byte, 32)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
+}
+
 type UserRepository interface {
-	CreateUser(ctx context.Context, email, username, password string) error
+	CreateUser(ctx context.Context, email, username, password string) (UserEntity, error)
 	GetUserByEmail(ctx context.Context, email string) (UserEntity, error)
+	SetVerifyToken(ctx context.Context, userID, token string) error
+	GetUserByVerifyToken(ctx context.Context, token string) (UserEntity, error)
+	SetEmailVerified(ctx context.Context, userID string) error
 }
 
 type UserEntity interface {
 	GetID() string
 	GetEmail() string
+	GetUsername() string
 	CheckPassword(password string) bool
 }
 
@@ -36,8 +50,23 @@ func NewAuthService(db UserRepository, cache CacheRepository) *AuthService {
 	return &AuthService{db: db, cache: cache}
 }
 
-func (s *AuthService) Register(ctx context.Context, email, username, password string) error {
-	return s.db.CreateUser(ctx, email, username, password)
+func (s *AuthService) Register(ctx context.Context, userEmail, username, password string, sendEmail bool, verifyLink string) error {
+	user, err := s.db.CreateUser(ctx, userEmail, username, password)
+	if err != nil {
+		return err
+	}
+
+	verifyToken := GenerateVerifyToken()
+	// 保存 token
+	if err := s.db.SetVerifyToken(ctx, user.GetID(), verifyToken); err != nil {
+		return err
+	}
+	if sendEmail {
+		if err := email.SendVerifyEmail(userEmail, username, verifyToken, verifyLink); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *AuthService) Login(ctx context.Context, email, password string) (accessToken string, refreshToken string, accessTTL, refreshTTL time.Duration, err error) {
@@ -118,4 +147,23 @@ func (s *AuthService) Logout(ctx context.Context, tokenStr string) error {
 	default:
 		return errors.New("unknown token type")
 	}
+}
+
+func (s *AuthService) VerifyEmail(ctx context.Context, token string) error {
+	user, err := s.db.GetUserByVerifyToken(ctx, token)
+	if err != nil {
+		return err
+	}
+
+	// 设置邮箱已验证
+	if err := s.db.SetEmailVerified(ctx, user.GetID()); err != nil {
+		return fmt.Errorf("failed to verify email: %w", err)
+	}
+
+	welcomeErr := email.SendWelcomeEmail(user.GetEmail(), user.GetUsername())
+	if welcomeErr != nil {
+		return welcomeErr
+	}
+
+	return nil
 }

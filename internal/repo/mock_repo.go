@@ -24,6 +24,11 @@ type MockUserRepo struct {
 	users map[string]*MockUser
 }
 
+func (r *MockUserRepo) SetVerifyToken(ctx context.Context, userID, token string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func NewMockUserRepo() *MockUserRepo {
 	return &MockUserRepo{users: make(map[string]*MockUser)}
 }

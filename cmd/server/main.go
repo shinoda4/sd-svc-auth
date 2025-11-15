@@ -30,10 +30,10 @@ func main() {
 	log.Printf("REDIS_ADDR: %s\n", redisAddr)
 	redisPwd := os.Getenv("REDIS_PASSWORD")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	_, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	db, err := repo.NewPostgres(ctx, dsn)
+	db, err := repo.NewPostgres(dsn)
 	if err != nil {
 		log.Fatalf("failed connect pg: %v", err)
 	}
