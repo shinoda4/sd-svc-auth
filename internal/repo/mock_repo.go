@@ -9,10 +9,12 @@ import (
 )
 
 type MockUser struct {
-	ID       string
-	Username string
-	Email    string
-	Password string
+	ID            string
+	Username      string
+	Email         string
+	Password      string
+	VerifyToken   string
+	EmailVerified bool
 }
 
 func (u *MockUser) GetID() string               { return u.ID }
@@ -24,18 +26,49 @@ type MockUserRepo struct {
 	users map[string]*MockUser
 }
 
+func (r *MockUserRepo) GetUserByVerifyToken(ctx context.Context, token string) (service.UserEntity, error) {
+	for _, u := range r.users {
+		if u.VerifyToken == token {
+			return u, nil
+		}
+	}
+	return nil, errors.New("invalid verify token")
+}
+
+func (r *MockUserRepo) SetEmailVerified(ctx context.Context, userID string) error {
+	for _, u := range r.users {
+		if u.ID == userID {
+			u.EmailVerified = true
+			return nil
+		}
+	}
+	return errors.New("user not found")
+}
+
 func (r *MockUserRepo) SetVerifyToken(ctx context.Context, userID, token string) error {
-	//TODO implement me
-	panic("implement me")
+	for _, u := range r.users {
+		if u.ID == userID {
+			u.VerifyToken = token
+			return nil
+		}
+	}
+	return errors.New("user not found")
 }
 
 func NewMockUserRepo() *MockUserRepo {
 	return &MockUserRepo{users: make(map[string]*MockUser)}
 }
 
-func (r *MockUserRepo) CreateUser(ctx context.Context, email, username, password string) error {
-	r.users[email] = &MockUser{ID: "u123", Email: email, Username: username, Password: password}
-	return nil
+func (r *MockUserRepo) CreateUser(ctx context.Context, email, username, password string) (service.UserEntity, error) {
+	u := &MockUser{
+		ID:       "mock-" + email,
+		Email:    email,
+		Username: username,
+		Password: password,
+	}
+
+	r.users[email] = u
+	return u, nil
 }
 
 func (r *MockUserRepo) GetUserByEmail(ctx context.Context, email string) (service.UserEntity, error) {
