@@ -6,6 +6,9 @@ build:
 run:
 	go run ./cmd/server
 
+test:
+	go test ./tests/... -v
+
 docker:
 	docker build -t sd-svc-auth:local .
 

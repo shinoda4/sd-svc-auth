@@ -35,7 +35,7 @@ func StartServer(authService *service.AuthService) {
 	api.POST("/register", s.HandleRegister)
 	api.POST("/login", s.HandleLogin)
 	api.POST("/refresh", s.HandleRefresh)
-	api.POST("/verify", s.HandleVerify)
+	api.POST("/verify-token", s.HandleVerifyToken)
 	api.POST("/logout", s.HandleLogout)
 
 	authorized := api.Group("/authorized")
@@ -159,7 +159,7 @@ func (s *Server) HandleMe(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"claims": claims})
 }
 
-func (s *Server) HandleVerify(c *gin.Context) {
+func (s *Server) HandleVerifyToken(c *gin.Context) {
 	var body struct {
 		AccessToken string `json:"token" binding:"required"`
 	}
