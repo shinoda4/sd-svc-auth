@@ -45,9 +45,10 @@ func TestRegister(t *testing.T) {
 
 	body, _ := json.Marshal(map[string]string{
 		"email":    "test@example.com",
+		"username": "test",
 		"password": "123456",
 	})
-	req, _ := http.NewRequest("POST", "/api/v1/register", bytes.NewBuffer(body))
+	req, _ := http.NewRequest("POST", "/api/v1/register?sendEmail=false", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 
 	resp := httptest.NewRecorder()
@@ -65,9 +66,10 @@ func TestLogin(t *testing.T) {
 	// 先注册
 	bodyReg, _ := json.Marshal(map[string]string{
 		"email":    "test@example.com",
+		"username": "test",
 		"password": "123456",
 	})
-	reqReg, _ := http.NewRequest("POST", "/api/v1/register", bytes.NewBuffer(bodyReg))
+	reqReg, _ := http.NewRequest("POST", "/api/v1/register?sendEmail=false", bytes.NewBuffer(bodyReg))
 	reqReg.Header.Set("Content-Type", "application/json")
 	respReg := httptest.NewRecorder()
 	server.ServeHTTP(respReg, reqReg)
@@ -97,10 +99,10 @@ func TestRefresh(t *testing.T) {
 	server := setupFullTestServer()
 
 	// 注册并登录
-	registerPayload := map[string]string{"email": "test@example.com", "password": "123456"}
+	registerPayload := map[string]string{"email": "test@example.com", "username": "test", "password": "123456"}
 	body, _ := json.Marshal(registerPayload)
 	server.ServeHTTP(httptest.NewRecorder(),
-		mustReq("POST", "/api/v1/register", body))
+		mustReq("POST", "/api/v1/register?sendEmail=false", body))
 
 	resp := httptest.NewRecorder()
 	server.ServeHTTP(resp, mustReq("POST", "/api/v1/login", body))
@@ -126,9 +128,9 @@ func TestVerify(t *testing.T) {
 	server := setupFullTestServer()
 
 	// 注册 + 登录
-	reg := map[string]string{"email": "test@example.com", "password": "123456"}
+	reg := map[string]string{"email": "test@example.com", "username": "test", "password": "123456"}
 	body, _ := json.Marshal(reg)
-	server.ServeHTTP(httptest.NewRecorder(), mustReq("POST", "/api/v1/register", body))
+	server.ServeHTTP(httptest.NewRecorder(), mustReq("POST", "/api/v1/register?sendEmail=false", body))
 
 	resp := httptest.NewRecorder()
 	server.ServeHTTP(resp, mustReq("POST", "/api/v1/login", body))
@@ -153,9 +155,9 @@ func TestMe(t *testing.T) {
 	server := setupFullTestServer()
 
 	// 注册 + 登录
-	reg := map[string]string{"email": "aaa@example.com", "password": "123456"}
+	reg := map[string]string{"email": "aaa@example.com", "username": "test", "password": "123456"}
 	body, _ := json.Marshal(reg)
-	server.ServeHTTP(httptest.NewRecorder(), mustReq("POST", "/api/v1/register", body))
+	server.ServeHTTP(httptest.NewRecorder(), mustReq("POST", "/api/v1/register?sendEmail=false", body))
 
 	resp := httptest.NewRecorder()
 	server.ServeHTTP(resp, mustReq("POST", "/api/v1/login", body))
@@ -180,9 +182,9 @@ func TestLogout(t *testing.T) {
 	server := setupFullTestServer()
 
 	// 注册 + 登录
-	reg := map[string]string{"email": "aaa@example.com", "password": "123456"}
+	reg := map[string]string{"email": "aaa@example.com", "username": "test", "password": "123456"}
 	body, _ := json.Marshal(reg)
-	server.ServeHTTP(httptest.NewRecorder(), mustReq("POST", "/api/v1/register", body))
+	server.ServeHTTP(httptest.NewRecorder(), mustReq("POST", "/api/v1/register?sendEmail=false", body))
 
 	resp := httptest.NewRecorder()
 	server.ServeHTTP(resp, mustReq("POST", "/api/v1/login", body))

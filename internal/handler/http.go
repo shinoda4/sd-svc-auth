@@ -58,6 +58,10 @@ type registerBody struct {
 }
 
 func (s *Server) HandleRegister(c *gin.Context) {
+	sendEmail := c.DefaultQuery("sendEmail", "true") // 默认 true
+	// sendEmail 是字符串，需要转换为 bool
+	sendEmailBool := sendEmail == "true"
+
 	var body registerBody
 	if err := c.ShouldBindJSON(&body); err != nil {
 		if errors.Is(err, io.EOF) {
@@ -82,9 +86,11 @@ func (s *Server) HandleRegister(c *gin.Context) {
 		return
 	}
 
-	if err := email.SendWelcomeEmail(body.Email, body.Username); err != nil {
-		c.JSON(500, gin.H{"error": "注册成功但邮件发送失败"})
-		return
+	if sendEmailBool {
+		if err := email.SendWelcomeEmail(body.Email, body.Username); err != nil {
+			c.JSON(500, gin.H{"error": "注册成功但邮件发送失败"})
+			return
+		}
 	}
 	c.JSON(http.StatusCreated, gin.H{"message": "registered"})
 }

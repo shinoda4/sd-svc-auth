@@ -12,6 +12,10 @@ Prefix: `/`
 
 Create a new user.
 
+Parameters:
+
+`sendEmail`: `true` or `false`
+
 ```text
 POST /api/v1/register
 {

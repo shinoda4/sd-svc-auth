@@ -10,12 +10,14 @@ import (
 
 type MockUser struct {
 	ID       string
+	Username string
 	Email    string
 	Password string
 }
 
 func (u *MockUser) GetID() string               { return u.ID }
 func (u *MockUser) GetEmail() string            { return u.Email }
+func (u *MockUser) GetUsername() string         { return u.Username }
 func (u *MockUser) CheckPassword(p string) bool { return u.Password == p }
 
 type MockUserRepo struct {
@@ -26,8 +28,8 @@ func NewMockUserRepo() *MockUserRepo {
 	return &MockUserRepo{users: make(map[string]*MockUser)}
 }
 
-func (r *MockUserRepo) CreateUser(ctx context.Context, email, password string) error {
-	r.users[email] = &MockUser{ID: "u123", Email: email, Password: password}
+func (r *MockUserRepo) CreateUser(ctx context.Context, email, username, password string) error {
+	r.users[email] = &MockUser{ID: "u123", Email: email, Username: username, Password: password}
 	return nil
 }
 
