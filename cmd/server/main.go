@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	config "github.com/shinoda4/sd-svc-auth/configs"
 	"github.com/shinoda4/sd-svc-auth/internal/handler"
 	"github.com/shinoda4/sd-svc-auth/internal/repo"
 	"github.com/shinoda4/sd-svc-auth/internal/service"
@@ -17,42 +18,32 @@ import (
 func main() {
 	logger.Init()
 
-	// load env or provide defaults
-	dsn := os.Getenv("DATABASE_DSN")
-	if dsn == "" {
-		dsn = "postgres://sd_auth:sd_pass@postgres:5432/sd_auth?sslmode=disable"
-	}
-	log.Printf("DATABASE_DSN: %s\n", dsn)
-	redisAddr := os.Getenv("REDIS_ADDR")
-	if redisAddr == "" {
-		redisAddr = "redis:6379"
-	}
-	log.Printf("REDIS_ADDR: %s\n", redisAddr)
-	redisPwd := os.Getenv("REDIS_PASSWORD")
+	// 加载配置（关键）
+	cfg := config.MustLoad()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	_, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	db, err := repo.NewPostgres(ctx, dsn)
+	db, err := repo.NewPostgres(cfg.DatabaseDSN)
 	if err != nil {
 		log.Fatalf("failed connect pg: %v", err)
 	}
 	defer db.Close()
 
-	cache := repo.NewRedis(redisAddr, redisPwd)
+	cache := repo.NewRedis(cfg.RedisAddr, cfg.RedisPassword)
 	defer func(cache *repo.RedisCache) {
 		err := cache.Close()
 		if err != nil {
-			log.Fatalf("failed close cache: %v", err)
+			log.Fatalf("failed close redis cache: %v", err)
 		}
 	}(cache)
 
 	authService := service.NewAuthService(db, cache)
 
-	// start server in goroutine
+	// 启动 HTTP 服务
 	go handler.StartServer(authService)
 
-	// graceful shutdown on signal
+	// 优雅关闭
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	<-sig

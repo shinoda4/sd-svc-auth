@@ -6,6 +6,6 @@ CREATE TABLE IF NOT EXISTS users
     password_hash TEXT    NOT NULL,
     created_at    TIMESTAMP WITH TIME ZONE DEFAULT now(),
     updated_at    TIMESTAMP WITH TIME ZONE DEFAULT now(),
-    is_verified   BOOLEAN                  DEFAULT FALSE,
+    email_verified   BOOLEAN                  DEFAULT FALSE,
     verify_token  VARCHAR(64)
 );
