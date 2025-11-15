@@ -3,7 +3,6 @@ package email
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
 
 	"gopkg.in/gomail.v2"
@@ -37,8 +36,6 @@ func SendWelcomeEmail(to, username string) error {
 func SendVerifyEmail(to, username, token, verifyLink string) error {
 	// 使用传入的 verifyLink 拼接 token
 	fullLink := fmt.Sprintf("%s?token=%s", verifyLink, token)
-
-	log.Printf(fullLink)
 
 	m := gomail.NewMessage()
 	m.SetHeader("From", "your_email@example.com")
