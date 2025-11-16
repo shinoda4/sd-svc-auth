@@ -9,8 +9,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/shinoda4/sd-svc-auth/internal/email"
-	"github.com/shinoda4/sd-svc-auth/internal/token"
+	"github.com/shinoda4/sd-svc-auth/pkg/email"
+	"github.com/shinoda4/sd-svc-auth/pkg/token"
 )
 
 func GenerateVerifyToken() string {
@@ -31,6 +31,7 @@ type UserEntity interface {
 	GetID() string
 	GetEmail() string
 	GetUsername() string
+	GetEmailVerified() bool
 	CheckPassword(password string) bool
 }
 
@@ -50,23 +51,24 @@ func NewAuthService(db UserRepository, cache CacheRepository) *AuthService {
 	return &AuthService{db: db, cache: cache}
 }
 
-func (s *AuthService) Register(ctx context.Context, userEmail, username, password string, sendEmail bool, verifyLink string) error {
+func (s *AuthService) Register(ctx context.Context, userEmail, username, password string, sendEmail bool, verifyLink string) (UserEntity, string, error) {
 	user, err := s.db.CreateUser(ctx, userEmail, username, password)
 	if err != nil {
-		return err
+		return nil, "", err
 	}
 
 	verifyToken := GenerateVerifyToken()
 	// 保存 token
 	if err := s.db.SetVerifyToken(ctx, user.GetID(), verifyToken); err != nil {
-		return err
+		return nil, "", err
 	}
 	if sendEmail {
-		if err := email.SendVerifyEmail(userEmail, username, verifyToken, verifyLink); err != nil {
-			return err
+		fullLink := fmt.Sprintf("%s?token=%s", verifyLink, verifyToken)
+		if err := email.SendVerifyEmail(userEmail, username, fullLink); err != nil {
+			return user, "", err
 		}
 	}
-	return nil
+	return user, verifyToken, nil
 }
 
 func (s *AuthService) Login(ctx context.Context, email, password string) (accessToken string, refreshToken string, accessTTL, refreshTTL time.Duration, err error) {
@@ -76,6 +78,9 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (access
 	}
 	if !u.CheckPassword(password) {
 		return "", "", 0, 0, ErrInvalidPassword
+	}
+	if !u.GetEmailVerified() {
+		return "", "", 0, 0, ErrEmailNotVerified
 	}
 
 	accessToken, accessTTL, err = token.GenerateJWT(u.GetID(), u.GetEmail())
@@ -149,7 +154,7 @@ func (s *AuthService) Logout(ctx context.Context, tokenStr string) error {
 	}
 }
 
-func (s *AuthService) VerifyEmail(ctx context.Context, token string) error {
+func (s *AuthService) VerifyEmail(ctx context.Context, token string, sendEmail bool) error {
 	user, err := s.db.GetUserByVerifyToken(ctx, token)
 	if err != nil {
 		return err
@@ -160,9 +165,11 @@ func (s *AuthService) VerifyEmail(ctx context.Context, token string) error {
 		return fmt.Errorf("failed to verify email: %w", err)
 	}
 
-	welcomeErr := email.SendWelcomeEmail(user.GetEmail(), user.GetUsername())
-	if welcomeErr != nil {
-		return welcomeErr
+	if sendEmail {
+		welcomeErr := email.SendWelcomeEmail(user.GetEmail(), user.GetUsername())
+		if welcomeErr != nil {
+			return welcomeErr
+		}
 	}
 
 	return nil

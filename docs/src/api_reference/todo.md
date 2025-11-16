@@ -6,7 +6,7 @@
 - [x] `api/v1/login`
 - [x] `api/v1/refresh`
 - [x] `api/v1/verfiy-token`
-- [ ] `api/v1/verfiy`
+- [x] `api/v1/verfiy`
 - [ ] `api/v1/resend-verification`
 
 ## Authorized

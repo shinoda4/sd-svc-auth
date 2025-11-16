@@ -17,6 +17,10 @@ type MockUser struct {
 	EmailVerified bool
 }
 
+func (u *MockUser) GetEmailVerified() bool {
+	return u.EmailVerified
+}
+
 func (u *MockUser) GetID() string               { return u.ID }
 func (u *MockUser) GetEmail() string            { return u.Email }
 func (u *MockUser) GetUsername() string         { return u.Username }
