@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/shinoda4/sd-svc-auth/internal/service"
+	"github.com/shinoda4/sd-svc-auth/internal/service/entity"
 )
 
 type MockUser struct {
@@ -30,7 +30,7 @@ type MockUserRepo struct {
 	users map[string]*MockUser
 }
 
-func (r *MockUserRepo) GetUserByVerifyToken(ctx context.Context, token string) (service.UserEntity, error) {
+func (r *MockUserRepo) GetUserByVerifyToken(ctx context.Context, token string) (entity.UserEntity, error) {
 	for _, u := range r.users {
 		if u.VerifyToken == token {
 			return u, nil
@@ -63,7 +63,7 @@ func NewMockUserRepo() *MockUserRepo {
 	return &MockUserRepo{users: make(map[string]*MockUser)}
 }
 
-func (r *MockUserRepo) CreateUser(ctx context.Context, email, username, password string) (service.UserEntity, error) {
+func (r *MockUserRepo) CreateUser(ctx context.Context, email, username, password string) (entity.UserEntity, error) {
 	u := &MockUser{
 		ID:       "mock-" + email,
 		Email:    email,
@@ -75,7 +75,7 @@ func (r *MockUserRepo) CreateUser(ctx context.Context, email, username, password
 	return u, nil
 }
 
-func (r *MockUserRepo) GetUserByEmail(ctx context.Context, email string) (service.UserEntity, error) {
+func (r *MockUserRepo) GetUserByEmail(ctx context.Context, email string) (entity.UserEntity, error) {
 	u, ok := r.users[email]
 	if !ok {
 		return nil, errors.New("user not found")

@@ -11,7 +11,7 @@ import (
 	config "github.com/shinoda4/sd-svc-auth/configs"
 	"github.com/shinoda4/sd-svc-auth/internal/handler"
 	"github.com/shinoda4/sd-svc-auth/internal/repo"
-	"github.com/shinoda4/sd-svc-auth/internal/service"
+	"github.com/shinoda4/sd-svc-auth/internal/service/auth"
 	"github.com/shinoda4/sd-svc-auth/pkg/logger"
 )
 
@@ -38,7 +38,7 @@ func main() {
 		}
 	}(cache)
 
-	authService := service.NewAuthService(db, cache)
+	authService := auth.NewAuthService(db, cache)
 
 	// 启动 HTTP 服务
 	go handler.StartServer(authService)

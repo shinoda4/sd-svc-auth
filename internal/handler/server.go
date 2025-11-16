@@ -5,17 +5,17 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/shinoda4/sd-svc-auth/internal/service"
+	"github.com/shinoda4/sd-svc-auth/internal/service/auth"
 )
 
 type Server struct {
-	Auth *service.AuthService
+	Auth *auth.Service
 }
 
-func NewServer(auth *service.AuthService) *Server {
+func NewServer(auth *auth.Service) *Server {
 	return &Server{Auth: auth}
 }
-func StartServer(authService *service.AuthService) {
+func StartServer(authService *auth.Service) {
 	s := &Server{Auth: authService}
 	port := os.Getenv("SERVER_PORT")
 

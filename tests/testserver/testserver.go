@@ -4,14 +4,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shinoda4/sd-svc-auth/internal/handler"
 	"github.com/shinoda4/sd-svc-auth/internal/repo"
-	"github.com/shinoda4/sd-svc-auth/internal/service"
+	auth2 "github.com/shinoda4/sd-svc-auth/internal/service/auth"
 )
 
 func SetupFullTestServer() *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	db := repo.NewMockUserRepo()
 	cache := repo.NewMockRedis()
-	authService := service.NewAuthService(db, cache)
+	authService := auth2.NewAuthService(db, cache)
 	s := handler.NewServer(authService)
 
 	r := gin.Default()

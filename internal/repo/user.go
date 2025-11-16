@@ -6,11 +6,11 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/shinoda4/sd-svc-auth/internal/entity"
-	"github.com/shinoda4/sd-svc-auth/internal/service"
+	entity2 "github.com/shinoda4/sd-svc-auth/internal/service/entity"
 	"golang.org/x/crypto/bcrypt"
 )
 
-func (r *UserRepo) GetUserByVerifyToken(ctx context.Context, token string) (service.UserEntity, error) {
+func (r *UserRepo) GetUserByVerifyToken(ctx context.Context, token string) (entity2.UserEntity, error) {
 	u := &entity.User{}
 	err := r.db.GetContext(ctx, u,
 		`SELECT id, email, username FROM users WHERE verify_token=$1`, token)
@@ -35,7 +35,7 @@ func (r *UserRepo) Close() {
 	}
 }
 
-func (r *UserRepo) CreateUser(ctx context.Context, email, username, password string) (service.UserEntity, error) {
+func (r *UserRepo) CreateUser(ctx context.Context, email, username, password string) (entity2.UserEntity, error) {
 	var exists bool
 	// 先检查用户是否已存在
 	err := r.db.GetContext(ctx, &exists, `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`, email)
@@ -71,7 +71,7 @@ func (r *UserRepo) CreateUser(ctx context.Context, email, username, password str
 	return user, nil
 }
 
-func (r *UserRepo) GetUserByEmail(ctx context.Context, email string) (service.UserEntity, error) {
+func (r *UserRepo) GetUserByEmail(ctx context.Context, email string) (entity2.UserEntity, error) {
 	u := &entity.User{}
 	err := r.db.GetContext(ctx, u, `SELECT id, email, username, password_hash FROM users WHERE email=$1`, email)
 	if err != nil {
