@@ -22,10 +22,11 @@ func SetupFullTestServer() *gin.Engine {
 		api.POST("/refresh", s.HandleRefresh)
 		api.POST("/verify-token", s.HandleVerifyToken)
 		api.POST("/logout", s.HandleLogout)
+		api.GET("/verify", s.HandleVerifyEmail)
 	}
 
 	auth := api.Group("/authorized")
-	auth.Use(s.JwtMiddleware()) // 用测试版中间件（见下）
+	auth.Use(s.JwtMiddleware())
 	{
 		auth.GET("/me", s.HandleMe)
 	}

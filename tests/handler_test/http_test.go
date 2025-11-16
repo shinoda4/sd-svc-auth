@@ -3,22 +3,24 @@ package handler_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/shinoda4/sd-svc-auth/internal/handler"
 	"github.com/shinoda4/sd-svc-auth/tests/testserver"
 )
 
 func TestRegister(t *testing.T) {
 	server := testserver.SetupFullTestServer()
 
-	body, _ := json.Marshal(map[string]string{
-		"email":    "test@example.com",
-		"username": "test",
-		"password": "123456",
+	bodyReg, _ := json.Marshal(handler.RegisterBody{
+		Email:    "test@example.com",
+		Username: "test",
+		Password: "123456",
 	})
-	req, _ := http.NewRequest("POST", "/api/v1/register?sendEmail=false", bytes.NewBuffer(body))
+	req, _ := http.NewRequest("POST", "/api/v1/register?sendEmail=false", bytes.NewBuffer(bodyReg))
 	req.Header.Set("Content-Type", "application/json")
 
 	resp := httptest.NewRecorder()
@@ -28,14 +30,14 @@ func TestRegister(t *testing.T) {
 		t.Fatalf("register failed: code=%d body=%s", resp.Code, resp.Body.String())
 	}
 }
+
 func TestLogin(t *testing.T) {
 	server := testserver.SetupFullTestServer()
 
-	// 先注册
-	bodyReg, _ := json.Marshal(map[string]string{
-		"email":    "test@example.com",
-		"username": "test",
-		"password": "123456",
+	bodyReg, _ := json.Marshal(handler.RegisterBody{
+		Email:    "test@example.com",
+		Username: "test",
+		Password: "123456",
 	})
 	reqReg, _ := http.NewRequest("POST", "/api/v1/register?sendEmail=false", bytes.NewBuffer(bodyReg))
 	reqReg.Header.Set("Content-Type", "application/json")
@@ -46,10 +48,25 @@ func TestLogin(t *testing.T) {
 		t.Fatalf("register failed: %s", respReg.Body.String())
 	}
 
+	// Verify
+	var data handler.RegisterResp
+	err := json.Unmarshal(respReg.Body.Bytes(), &data)
+	if err != nil {
+		t.Fatalf("failed to parse register response: %v", err)
+	}
+	emailVerifyToken := data.VerifyToken
+
+	reqVerify, _ := http.NewRequest("GET", fmt.Sprintf("/api/v1/verify?token=%s&sendEmail=false", emailVerifyToken), nil)
+	respVerify := httptest.NewRecorder()
+	server.ServeHTTP(respVerify, reqVerify)
+	if respVerify.Code != http.StatusOK {
+		t.Fatalf("verify failed: code=%d body=%s", respVerify.Code, respVerify.Body.String())
+	}
+
 	// 登录
-	bodyLogin, _ := json.Marshal(map[string]string{
-		"email":    "test@example.com",
-		"password": "123456",
+	bodyLogin, _ := json.Marshal(handler.LoginBody{
+		Email:    "test@example.com",
+		Password: "123456",
 	})
 	reqLogin, _ := http.NewRequest("POST", "/api/v1/login", bytes.NewBuffer(bodyLogin))
 	reqLogin.Header.Set("Content-Type", "application/json")
@@ -65,21 +82,49 @@ func TestLogin(t *testing.T) {
 func TestRefresh(t *testing.T) {
 	server := testserver.SetupFullTestServer()
 
-	// 注册并登录
-	registerPayload := map[string]string{"email": "test@example.com", "username": "test", "password": "123456"}
-	body, _ := json.Marshal(registerPayload)
-	server.ServeHTTP(httptest.NewRecorder(),
-		mustReq("POST", "/api/v1/register?sendEmail=false", body))
+	// Register
+	bodyReg, _ := json.Marshal(handler.RegisterBody{
+		Email:    "test@example.com",
+		Username: "test",
+		Password: "123456",
+	})
+	reqReg, _ := http.NewRequest("POST", "/api/v1/register?sendEmail=false", bytes.NewBuffer(bodyReg))
+	reqReg.Header.Set("Content-Type", "application/json")
+	respReg := httptest.NewRecorder()
+	server.ServeHTTP(respReg, reqReg)
 
+	if respReg.Code != http.StatusCreated {
+		t.Fatalf("register failed: %s", respReg.Body.String())
+	}
+
+	// Verify
+	var data handler.RegisterResp
+	err := json.Unmarshal(respReg.Body.Bytes(), &data)
+	if err != nil {
+		t.Fatalf("failed to parse register response: %v", err)
+	}
+	emailVerifyToken := data.VerifyToken
+
+	reqVerify, _ := http.NewRequest("GET", fmt.Sprintf("/api/v1/verify?token=%s&sendEmail=false", emailVerifyToken), nil)
+	respVerify := httptest.NewRecorder()
+	server.ServeHTTP(respVerify, reqVerify)
+	if respVerify.Code != http.StatusOK {
+		t.Fatalf("verify failed: code=%d body=%s", respVerify.Code, respVerify.Body.String())
+	}
+
+	// Login
+	bodyLogin, _ := json.Marshal(handler.LoginBody{
+		Email:    "test@example.com",
+		Password: "123456",
+	})
 	resp := httptest.NewRecorder()
-	server.ServeHTTP(resp, mustReq("POST", "/api/v1/login", body))
+	server.ServeHTTP(resp, mustReq("POST", "/api/v1/login", bodyLogin))
 
-	var reply map[string]any
+	var reply handler.LoginResp
 	_ = json.Unmarshal(resp.Body.Bytes(), &reply)
-	refreshToken := reply["refresh_token"].(string)
 
 	// refresh
-	refPayload := map[string]string{"refresh_token": refreshToken}
+	refPayload := handler.RefreshBody{RefreshToken: reply.RefreshToken}
 	body2, _ := json.Marshal(refPayload)
 
 	resp2 := httptest.NewRecorder()
@@ -93,19 +138,44 @@ func TestRefresh(t *testing.T) {
 func TestVerifyToken(t *testing.T) {
 	server := testserver.SetupFullTestServer()
 
-	// 注册 + 登录
-	reg := map[string]string{"email": "test@example.com", "username": "test", "password": "123456"}
-	body, _ := json.Marshal(reg)
-	server.ServeHTTP(httptest.NewRecorder(), mustReq("POST", "/api/v1/register?sendEmail=false", body))
+	// Register
+	bodyReg, _ := json.Marshal(handler.RegisterBody{
+		Email:    "test@example.com",
+		Username: "test",
+		Password: "123456",
+	})
+	reqReg, _ := http.NewRequest("POST", "/api/v1/register?sendEmail=false", bytes.NewBuffer(bodyReg))
+	reqReg.Header.Set("Content-Type", "application/json")
+	respReg := httptest.NewRecorder()
+	server.ServeHTTP(respReg, reqReg)
 
+	if respReg.Code != http.StatusCreated {
+		t.Fatalf("register failed: %s", respReg.Body.String())
+	}
+
+	// Verify
+	var data handler.RegisterResp
+	err := json.Unmarshal(respReg.Body.Bytes(), &data)
+	if err != nil {
+		t.Fatalf("failed to parse register response: %v", err)
+	}
+	emailVerifyToken := data.VerifyToken
+
+	reqVerify, _ := http.NewRequest("GET", fmt.Sprintf("/api/v1/verify?token=%s&sendEmail=false", emailVerifyToken), nil)
+	respVerify := httptest.NewRecorder()
+	server.ServeHTTP(respVerify, reqVerify)
+	if respVerify.Code != http.StatusOK {
+		t.Fatalf("verify failed: code=%d body=%s", respVerify.Code, respVerify.Body.String())
+	}
+
+	// Login
 	resp := httptest.NewRecorder()
-	server.ServeHTTP(resp, mustReq("POST", "/api/v1/login", body))
+	server.ServeHTTP(resp, mustReq("POST", "/api/v1/login", bodyReg))
 
-	var login map[string]any
-	_ = json.Unmarshal(resp.Body.Bytes(), &login)
-	access := login["access_token"].(string)
+	var reply handler.LoginResp
+	_ = json.Unmarshal(resp.Body.Bytes(), &reply)
 
-	verifyPayload := map[string]string{"token": access}
+	verifyPayload := map[string]string{"token": reply.AccessToken}
 	vbody, _ := json.Marshal(verifyPayload)
 
 	resp2 := httptest.NewRecorder()
@@ -119,13 +189,39 @@ func TestVerifyToken(t *testing.T) {
 func TestMe(t *testing.T) {
 	server := testserver.SetupFullTestServer()
 
-	// 注册 + 登录
-	reg := map[string]string{"email": "aaa@example.com", "username": "test", "password": "123456"}
-	body, _ := json.Marshal(reg)
-	server.ServeHTTP(httptest.NewRecorder(), mustReq("POST", "/api/v1/register?sendEmail=false", body))
+	// Register
+	bodyReg, _ := json.Marshal(handler.RegisterBody{
+		Email:    "test@example.com",
+		Username: "test",
+		Password: "123456",
+	})
+	reqReg, _ := http.NewRequest("POST", "/api/v1/register?sendEmail=false", bytes.NewBuffer(bodyReg))
+	reqReg.Header.Set("Content-Type", "application/json")
+	respReg := httptest.NewRecorder()
+	server.ServeHTTP(respReg, reqReg)
 
+	if respReg.Code != http.StatusCreated {
+		t.Fatalf("register failed: %s", respReg.Body.String())
+	}
+
+	// Verify
+	var data handler.RegisterResp
+	err := json.Unmarshal(respReg.Body.Bytes(), &data)
+	if err != nil {
+		t.Fatalf("failed to parse register response: %v", err)
+	}
+	emailVerifyToken := data.VerifyToken
+
+	reqVerify, _ := http.NewRequest("GET", fmt.Sprintf("/api/v1/verify?token=%s&sendEmail=false", emailVerifyToken), nil)
+	respVerify := httptest.NewRecorder()
+	server.ServeHTTP(respVerify, reqVerify)
+	if respVerify.Code != http.StatusOK {
+		t.Fatalf("verify failed: code=%d body=%s", respVerify.Code, respVerify.Body.String())
+	}
+
+	// Login
 	resp := httptest.NewRecorder()
-	server.ServeHTTP(resp, mustReq("POST", "/api/v1/login", body))
+	server.ServeHTTP(resp, mustReq("POST", "/api/v1/login", bodyReg))
 
 	var login map[string]any
 	_ = json.Unmarshal(resp.Body.Bytes(), &login)
@@ -145,13 +241,39 @@ func TestMe(t *testing.T) {
 func TestLogout(t *testing.T) {
 	server := testserver.SetupFullTestServer()
 
-	// 注册 + 登录
-	reg := map[string]string{"email": "aaa@example.com", "username": "test", "password": "123456"}
-	body, _ := json.Marshal(reg)
-	server.ServeHTTP(httptest.NewRecorder(), mustReq("POST", "/api/v1/register?sendEmail=false", body))
+	// Register
+	bodyReg, _ := json.Marshal(handler.RegisterBody{
+		Email:    "test@example.com",
+		Username: "test",
+		Password: "123456",
+	})
+	reqReg, _ := http.NewRequest("POST", "/api/v1/register?sendEmail=false", bytes.NewBuffer(bodyReg))
+	reqReg.Header.Set("Content-Type", "application/json")
+	respReg := httptest.NewRecorder()
+	server.ServeHTTP(respReg, reqReg)
 
+	if respReg.Code != http.StatusCreated {
+		t.Fatalf("register failed: %s", respReg.Body.String())
+	}
+
+	// Verify
+	var data handler.RegisterResp
+	err := json.Unmarshal(respReg.Body.Bytes(), &data)
+	if err != nil {
+		t.Fatalf("failed to parse register response: %v", err)
+	}
+	emailVerifyToken := data.VerifyToken
+
+	reqVerify, _ := http.NewRequest("GET", fmt.Sprintf("/api/v1/verify?token=%s&sendEmail=false", emailVerifyToken), nil)
+	respVerify := httptest.NewRecorder()
+	server.ServeHTTP(respVerify, reqVerify)
+	if respVerify.Code != http.StatusOK {
+		t.Fatalf("verify failed: code=%d body=%s", respVerify.Code, respVerify.Body.String())
+	}
+
+	// Login
 	resp := httptest.NewRecorder()
-	server.ServeHTTP(resp, mustReq("POST", "/api/v1/login", body))
+	server.ServeHTTP(resp, mustReq("POST", "/api/v1/login", bodyReg))
 
 	var login map[string]any
 	_ = json.Unmarshal(resp.Body.Bytes(), &login)

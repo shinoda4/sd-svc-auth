@@ -12,7 +12,6 @@ type RedisCache struct {
 }
 
 func (r *RedisCache) SetBlacklist(ctx context.Context, token string, ttl time.Duration) error {
-	// 每个 token 一个独立 key
 	key := "blacklist:" + token
 	return r.client.Set(ctx, key, "1", ttl).Err()
 }
