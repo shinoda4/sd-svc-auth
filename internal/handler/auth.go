@@ -66,8 +66,6 @@ func (s *Server) HandleRegister(c *gin.Context) {
 		VerifyToken: verifyToken,
 	}
 	c.JSON(http.StatusCreated, resp)
-	return
-
 }
 
 type LoginBody struct {
