@@ -57,3 +57,47 @@ func SendVerifyEmail(to, username string, fullLink string) error {
 	d := gomail.NewDialer("smtp.gmail.com", 587, emailAddress, emailPassword)
 	return d.DialAndSend(m)
 }
+
+func SendPasswordResetEmail(to, username string, fullLink string) error {
+	m := gomail.NewMessage()
+	m.SetHeader("From", "your_email@example.com")
+	m.SetHeader("To", to)
+	m.SetHeader("Subject", "Verify your email!")
+	m.SetBody("text/html", fmt.Sprintf(
+		"Dear <b>%s</b>, please click the following link to reset your email: <a href='%s'>Reset your password</a>",
+		username, fullLink,
+	))
+	emailPassword := os.Getenv("EMAIL_PASSWORD")
+	if emailPassword == "" {
+		err := errors.New("EMAIL_PASSWORD environment variable not set")
+		return err
+	}
+	emailAddress := os.Getenv("EMAIL_ADDRESS")
+	if emailAddress == "" {
+		err := errors.New("EMAIL_ADDRESS environment variable not set")
+		return err
+	}
+	d := gomail.NewDialer("smtp.gmail.com", 587, emailAddress, emailPassword)
+	return d.DialAndSend(m)
+}
+
+
+func SendEmail(from string, to string, subject string, body string) error {
+	m := gomail.NewMessage()
+	m.SetHeader("From", from)
+	m.SetHeader("To", to)
+	m.SetHeader("Subject", subject)
+	m.SetBody("text/html", body)
+	emailPassword := os.Getenv("EMAIL_PASSWORD")
+	if emailPassword == "" {
+		err := errors.New("EMAIL_PASSWORD environment variable not set")
+		return err
+	}
+	emailAddress := os.Getenv("EMAIL_ADDRESS")
+	if emailAddress == "" {
+		err := errors.New("EMAIL_ADDRESS environment variable not set")
+		return err
+	}
+	d := gomail.NewDialer("smtp.gmail.com", 587, emailAddress, emailPassword)
+	return d.DialAndSend(m)
+}

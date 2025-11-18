@@ -5,16 +5,23 @@ import (
 	"errors"
 	"time"
 
-	"github.com/shinoda4/sd-svc-auth/internal/service"
+	"github.com/shinoda4/sd-svc-auth/internal/service/entity"
 )
 
 type MockUser struct {
-	ID            string
-	Username      string
-	Email         string
-	Password      string
-	VerifyToken   string
-	EmailVerified bool
+	ID               string
+	Username         string
+	Email            string
+	Password         string
+	VerifyToken      string
+	EmailVerified    bool
+	ResetTokenExpire time.Time
+	ResetToken       string
+	PasswordHash     string
+}
+
+func (u *MockUser) GetResetTokenExpire() time.Time {
+	return u.ResetTokenExpire
 }
 
 func (u *MockUser) GetEmailVerified() bool {
@@ -30,7 +37,51 @@ type MockUserRepo struct {
 	users map[string]*MockUser
 }
 
-func (r *MockUserRepo) GetUserByVerifyToken(ctx context.Context, token string) (service.UserEntity, error) {
+// ClearResetToken implements entity.UserRepository.
+func (r *MockUserRepo) ClearResetToken(ctx context.Context, userID string) error {
+	u, ok := r.users[userID]
+	if !ok {
+		return errors.New("user not found")
+	}
+	u.ResetToken = ""
+	u.ResetTokenExpire = time.Time{}
+	return nil
+}
+
+// GetUserByResetToken implements entity.UserRepository.
+func (r *MockUserRepo) GetUserByResetToken(ctx context.Context, token string) (entity.UserEntity, error) {
+    for _, u := range r.users {
+        if u.ResetToken == token {
+            return u, nil
+        }
+    }
+    return nil, errors.New("invalid token")
+}
+
+// SaveResetToken implements entity.UserRepository.
+func (r *MockUserRepo) SaveResetToken(ctx context.Context, s string, resetToken string, expire time.Time) error {
+	u, ok := r.users[s]
+	if !ok {
+		return errors.New("user not found")
+	}
+	u.ResetToken = resetToken
+	u.ResetTokenExpire = expire
+	return nil
+
+}
+
+// UpdatePassword implements entity.UserRepository.
+func (r *MockUserRepo) UpdatePassword(ctx context.Context, userID string, newPassword string) error {
+	u, ok := r.users[userID]
+	if !ok {
+		return errors.New("user not found")
+	}
+	u.PasswordHash = newPassword
+	return nil
+
+}
+
+func (r *MockUserRepo) GetUserByVerifyToken(ctx context.Context, token string) (entity.UserEntity, error) {
 	for _, u := range r.users {
 		if u.VerifyToken == token {
 			return u, nil
@@ -63,7 +114,7 @@ func NewMockUserRepo() *MockUserRepo {
 	return &MockUserRepo{users: make(map[string]*MockUser)}
 }
 
-func (r *MockUserRepo) CreateUser(ctx context.Context, email, username, password string) (service.UserEntity, error) {
+func (r *MockUserRepo) CreateUser(ctx context.Context, email, username, password string) (entity.UserEntity, error) {
 	u := &MockUser{
 		ID:       "mock-" + email,
 		Email:    email,
@@ -75,7 +126,7 @@ func (r *MockUserRepo) CreateUser(ctx context.Context, email, username, password
 	return u, nil
 }
 
-func (r *MockUserRepo) GetUserByEmail(ctx context.Context, email string) (service.UserEntity, error) {
+func (r *MockUserRepo) GetUserByEmail(ctx context.Context, email string) (entity.UserEntity, error) {
 	u, ok := r.users[email]
 	if !ok {
 		return nil, errors.New("user not found")

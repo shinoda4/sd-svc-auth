@@ -5,10 +5,21 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func NewPostgres(dsn string) (*UserRepo, error) {
+type Repo struct {
+	db *sqlx.DB
+}
+
+func (r *Repo) Close() {
+	err := r.db.Close()
+	if err != nil {
+		return
+	}
+}
+
+func NewPostgres(dsn string) (*Repo, error) {
 	db, err := sqlx.Connect("postgres", dsn)
 	if err != nil {
 		return nil, err
 	}
-	return &UserRepo{db: db}, nil
+	return &Repo{db: db}, nil
 }

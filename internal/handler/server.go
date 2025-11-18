@@ -5,17 +5,17 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/shinoda4/sd-svc-auth/internal/service"
+	"github.com/shinoda4/sd-svc-auth/internal/service/auth"
 )
 
 type Server struct {
-	Auth *service.AuthService
+	Auth *auth.Service
 }
 
-func NewServer(auth *service.AuthService) *Server {
+func NewServer(auth *auth.Service) *Server {
 	return &Server{Auth: auth}
 }
-func StartServer(authService *service.AuthService) {
+func StartServer(authService *auth.Service) {
 	s := &Server{Auth: authService}
 	port := os.Getenv("SERVER_PORT")
 
@@ -29,6 +29,8 @@ func StartServer(authService *service.AuthService) {
 	api.POST("/verify-token", s.HandleVerifyToken)
 	api.POST("/logout", s.HandleLogout)
 	api.GET("/verify", s.HandleVerifyEmail)
+	api.POST("/password-reset", s.HandlePasswordReset)
+	api.POST("/password-reset-confirm", s.HandlePasswordResetConfirm)
 
 	authorized := api.Group("/authorized")
 	authorized.Use(s.JwtMiddleware())

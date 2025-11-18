@@ -24,8 +24,7 @@ type RegisterResp struct {
 
 func (s *Server) HandleRegister(c *gin.Context) {
 
-	sendEmail := c.DefaultQuery("sendEmail", "true") // 默认 true
-	// sendEmail 是字符串，需要转换为 bool
+	sendEmail := c.DefaultQuery("sendEmail", "true")
 	sendEmailBool := sendEmail == "true"
 
 	var body RegisterBody
@@ -66,8 +65,6 @@ func (s *Server) HandleRegister(c *gin.Context) {
 		VerifyToken: verifyToken,
 	}
 	c.JSON(http.StatusCreated, resp)
-	return
-
 }
 
 type LoginBody struct {

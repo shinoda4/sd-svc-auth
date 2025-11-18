@@ -11,7 +11,7 @@ import (
 	config "github.com/shinoda4/sd-svc-auth/configs"
 	"github.com/shinoda4/sd-svc-auth/internal/handler"
 	"github.com/shinoda4/sd-svc-auth/internal/repo"
-	"github.com/shinoda4/sd-svc-auth/internal/service"
+	"github.com/shinoda4/sd-svc-auth/internal/service/auth"
 	"github.com/shinoda4/sd-svc-auth/pkg/logger"
 )
 
@@ -24,7 +24,7 @@ func main() {
 	_, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	db, err := repo.NewPostgres(cfg.DatabaseDSN)
+	db, err := repo.NewUserRepo(cfg.DatabaseDSN)
 	if err != nil {
 		log.Fatalf("failed connect pg: %v", err)
 	}
@@ -38,7 +38,7 @@ func main() {
 		}
 	}(cache)
 
-	authService := service.NewAuthService(db, cache)
+	authService := auth.NewAuthService(db, cache)
 
 	// 启动 HTTP 服务
 	go handler.StartServer(authService)
