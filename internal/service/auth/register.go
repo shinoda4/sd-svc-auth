@@ -2,7 +2,9 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"os"
 
 	"github.com/shinoda4/sd-svc-auth/internal/service"
 	"github.com/shinoda4/sd-svc-auth/internal/service/entity"
@@ -16,13 +18,21 @@ func (s *Service) Register(ctx context.Context, userEmail, username, password st
 	}
 
 	verifyToken := service.GenerateVerifyToken()
-	// 保存 token
 	if err := s.db.SetVerifyToken(ctx, user.GetID(), verifyToken); err != nil {
 		return nil, "", err
 	}
 	if sendEmail {
+		subject := "Verify your email!"
 		fullLink := fmt.Sprintf("%s?token=%s", verifyLink, verifyToken)
-		if err := email.SendVerifyEmail(userEmail, username, fullLink); err != nil {
+		body := fmt.Sprintf("Dear <b>%s</b>, please finish your account validation by clicking the following link: <a href='%s'>Verify Email</a>", user.GetUsername(), fullLink)
+
+		emailAddress := os.Getenv("EMAIL_ADDRESS")
+		if emailAddress == "" {
+			return user, "", errors.New("EMAIL_ADDRESS environment variable not set")
+		}
+
+		err := email.SendEmail(emailAddress, user.GetEmail(), subject, body)
+		if err != nil {
 			return user, "", err
 		}
 	}
