@@ -105,6 +105,58 @@ Return:
 }
 ```
 
+### Password Reset
+
+Required for password reset.
+
+```text
+POST /api/v1/password-reset
+
+{
+	"email": "lindesong666@163.com",
+    "username": "desonglll"
+}
+```
+
+You should config the `RESET_PASSWORD_URL` environment variable.
+
+This operation will create a new token and expire time, then insert it to `reset_token` field and `reset_token_expire` in `users` table. The default value of these two field is `null`.
+
+When the reset process is done successfully, these two fields shoud back to `null`.
+
+Finally, the system will send an email that contains a link which should redirect to `password reset confirm` api to the required email address. You can change the confirmation host by set `RESET_PASSWORD_URL`.
+
+The confirmation link should looks like `RESET_PASSWORD_URL?token=TOKEN`.
+
+Return:
+
+```text
+200 OK
+```
+
+### Password Reset Confirm
+
+Confirm the password reset action.
+
+Before access this api, you should already access the `password-reset` api successfully.
+
+In the past section, we described that the system is send an email that contains confirmation link to required email address.
+
+```text
+POST api/v1/password-reset-confirm?token=[TOKEN]
+
+{
+    "new_password": "123456",
+    "new_password_confirm": "123456"
+}
+```
+
+Return:
+
+```text
+200 OK
+```
+
 ## Authorized
 
 Prefix: `/authorized`
