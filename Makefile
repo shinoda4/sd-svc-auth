@@ -1,3 +1,7 @@
+include configs/.env.example
+export
+
+
 .PHONY: build run docker up init-db
 
 build:

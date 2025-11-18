@@ -11,6 +11,10 @@ type UserRepository interface {
 	SetVerifyToken(ctx context.Context, userID, token string) error
 	GetUserByVerifyToken(ctx context.Context, token string) (UserEntity, error)
 	SetEmailVerified(ctx context.Context, userID string) error
+	SaveResetToken(ctx context.Context, s string, resetToken string, expire time.Time) error
+	GetUserByResetToken(ctx context.Context, token string) (UserEntity, error)
+	UpdatePassword(ctx context.Context, userID, newPassword string) error
+	ClearResetToken(ctx context.Context, userID string) error
 }
 
 type UserEntity interface {
@@ -19,6 +23,7 @@ type UserEntity interface {
 	GetUsername() string
 	GetEmailVerified() bool
 	CheckPassword(password string) bool
+	GetResetTokenExpire() time.Time
 }
 
 type CacheRepository interface {

@@ -29,6 +29,8 @@ func StartServer(authService *auth.Service) {
 	api.POST("/verify-token", s.HandleVerifyToken)
 	api.POST("/logout", s.HandleLogout)
 	api.GET("/verify", s.HandleVerifyEmail)
+	api.POST("/password-reset", s.HandlePasswordReset)
+	api.POST("/password-reset-confirm", s.HandlePasswordResetConfirm)
 
 	authorized := api.Group("/authorized")
 	authorized.Use(s.JwtMiddleware())

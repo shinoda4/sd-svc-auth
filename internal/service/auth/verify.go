@@ -22,7 +22,6 @@ func (s *Service) VerifyEmail(ctx context.Context, token string, sendEmail bool)
 		return err
 	}
 
-	// 设置邮箱已验证
 	if err := s.db.SetEmailVerified(ctx, user.GetID()); err != nil {
 		return fmt.Errorf("failed to verify email: %w", err)
 	}

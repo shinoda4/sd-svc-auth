@@ -24,7 +24,7 @@ func main() {
 	_, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	db, err := repo.NewPostgres(cfg.DatabaseDSN)
+	db, err := repo.NewUserRepo(cfg.DatabaseDSN)
 	if err != nil {
 		log.Fatalf("failed connect pg: %v", err)
 	}

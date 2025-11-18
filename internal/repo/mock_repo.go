@@ -9,12 +9,17 @@ import (
 )
 
 type MockUser struct {
-	ID            string
-	Username      string
-	Email         string
-	Password      string
-	VerifyToken   string
-	EmailVerified bool
+	ID               string
+	Username         string
+	Email            string
+	Password         string
+	VerifyToken      string
+	EmailVerified    bool
+	ResetTokenExpire time.Time
+}
+
+func (u *MockUser) GetResetTokenExpire() time.Time {
+	return u.ResetTokenExpire
 }
 
 func (u *MockUser) GetEmailVerified() bool {
