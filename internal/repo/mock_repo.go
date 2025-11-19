@@ -50,12 +50,12 @@ func (r *MockUserRepo) ClearResetToken(ctx context.Context, userID string) error
 
 // GetUserByResetToken implements entity.UserRepository.
 func (r *MockUserRepo) GetUserByResetToken(ctx context.Context, token string) (entity.UserEntity, error) {
-    for _, u := range r.users {
-        if u.ResetToken == token {
-            return u, nil
-        }
-    }
-    return nil, errors.New("invalid token")
+	for _, u := range r.users {
+		if u.ResetToken == token {
+			return u, nil
+		}
+	}
+	return nil, errors.New("invalid token")
 }
 
 // SaveResetToken implements entity.UserRepository.
@@ -115,6 +115,9 @@ func NewMockUserRepo() *MockUserRepo {
 }
 
 func (r *MockUserRepo) CreateUser(ctx context.Context, email, username, password string) (entity.UserEntity, error) {
+	if _, ok := r.users[email]; ok {
+		return nil, &ErrUserExists{Email: email}
+	}
 	u := &MockUser{
 		ID:       "mock-" + email,
 		Email:    email,

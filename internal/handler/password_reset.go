@@ -8,18 +8,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shinoda4/sd-svc-auth/internal/dto"
 )
-
-type ResetPasswordBody struct {
-	Email    string `json:"email" binding:"required"`
-	Username string `json:"username" binding:"required"`
-}
 
 func (s *Server) HandlePasswordReset(c *gin.Context) {
 	// sendEmail := c.DefaultQuery("sendEmail", "true")
 	// sendEmailBool := sendEmail == "true"
 
-	var body ResetPasswordBody
+	var body dto.ResetPasswordRequest
 	if err := c.ShouldBindJSON(&body); err != nil {
 		if errors.Is(err, io.EOF) {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -42,22 +38,18 @@ func (s *Server) HandlePasswordReset(c *gin.Context) {
 
 }
 
-type ResetPasswordConfirmBody struct{
-	NewPassword string `json:"new_password" binding:"required"`
-	NewPasswordConfirm string `json:"new_password_confirm" binding:"required"`
-}
 func (s *Server) HandlePasswordResetConfirm(c *gin.Context) {
 
 	token := c.DefaultQuery("token", "")
 
-	if token == ""{
+	if token == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "token not provided",
 		})
 		return
 	}
 
-	var body ResetPasswordConfirmBody
+	var body dto.ResetPasswordConfirmRequest
 	if err := c.ShouldBindJSON(&body); err != nil {
 		if errors.Is(err, io.EOF) {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -73,7 +65,7 @@ func (s *Server) HandlePasswordResetConfirm(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	if body.NewPassword != body.NewPasswordConfirm{
+	if body.NewPassword != body.NewPasswordConfirm {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "password not confirm",
 		})

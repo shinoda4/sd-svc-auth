@@ -6,14 +6,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shinoda4/sd-svc-auth/internal/dto"
 )
 
-type RefreshBody struct {
-	RefreshToken string `json:"refresh_token" binding:"required"`
-}
-
 func (s *Server) HandleRefresh(c *gin.Context) {
-	var body RefreshBody
+	var body dto.RefreshRequest
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "refresh_token is required"})
 		return
@@ -28,16 +25,14 @@ func (s *Server) HandleRefresh(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"access_token": newAccess,
-		"expires_in":   int(accessTTL.Seconds()),
+	c.JSON(http.StatusOK, dto.RefreshResponse{
+		AccessToken: newAccess,
+		ExpiresIn:   int(accessTTL.Seconds()),
 	})
 }
 
 func (s *Server) HandleVerifyToken(c *gin.Context) {
-	var body struct {
-		AccessToken string `json:"token" binding:"required"`
-	}
+	var body dto.VerifyTokenRequest
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -49,8 +44,8 @@ func (s *Server) HandleVerifyToken(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"token": claims,
+	c.JSON(http.StatusOK, dto.VerifyTokenResponse{
+		Token: claims,
 	})
 
 }

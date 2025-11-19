@@ -9,25 +9,16 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shinoda4/sd-svc-auth/internal/dto"
 	"github.com/shinoda4/sd-svc-auth/internal/repo"
 )
-
-type RegisterBody struct {
-	Email    string `json:"email" binding:"required,email"`
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required,min=6"`
-}
-type RegisterResp struct {
-	Message     string `json:"message"`
-	VerifyToken string `json:"verifyToken"`
-}
 
 func (s *Server) HandleRegister(c *gin.Context) {
 
 	sendEmail := c.DefaultQuery("sendEmail", "true")
 	sendEmailBool := sendEmail == "true"
 
-	var body RegisterBody
+	var body dto.RegisterRequest
 	if err := c.ShouldBindJSON(&body); err != nil {
 		if errors.Is(err, io.EOF) {
 			c.JSON(http.StatusBadRequest, gin.H{
@@ -60,27 +51,15 @@ func (s *Server) HandleRegister(c *gin.Context) {
 		return
 	}
 
-	resp := RegisterResp{
+	resp := dto.RegisterResponse{
 		Message:     "registered",
 		VerifyToken: verifyToken,
 	}
 	c.JSON(http.StatusCreated, resp)
 }
 
-type LoginBody struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
-}
-
-type LoginResp struct {
-	AccessToken      string `json:"access_token"`
-	RefreshToken     string `json:"refresh_token"`
-	ExpiresIn        int    `json:"expires_in"`
-	RefreshExpiresIn int    `json:"refresh_expires_in"`
-}
-
 func (s *Server) HandleLogin(c *gin.Context) {
-	var body LoginBody
+	var body dto.LoginRequest
 	if err := c.ShouldBindJSON(&body); err != nil {
 		if errors.Is(err, io.EOF) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "empty request body"})
@@ -99,7 +78,7 @@ func (s *Server) HandleLogin(c *gin.Context) {
 		return
 	}
 
-	resp := LoginResp{
+	resp := dto.LoginResponse{
 		AccessToken:      accessToken,
 		RefreshToken:     refreshToken,
 		ExpiresIn:        int(accessTTL.Seconds()),
