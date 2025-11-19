@@ -1,10 +1,10 @@
-package handler
+package http
 
 import (
 	"context"
 	"errors"
 	"io"
-	"net/http"
+	stdhttp "net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -18,13 +18,13 @@ func (s *Server) HandlePasswordReset(c *gin.Context) {
 	var body dto.ResetPasswordRequest
 	if err := c.ShouldBindJSON(&body); err != nil {
 		if errors.Is(err, io.EOF) {
-			c.JSON(http.StatusBadRequest, gin.H{
+			c.JSON(stdhttp.StatusBadRequest, gin.H{
 				"error": "empty request body",
 			})
 			return
 		}
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(stdhttp.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -33,7 +33,7 @@ func (s *Server) HandlePasswordReset(c *gin.Context) {
 
 	err := s.Auth.PasswordReset(ctx, body.Email, body.Username)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(stdhttp.StatusBadRequest, gin.H{"error": err.Error()})
 	}
 
 }
@@ -43,22 +43,20 @@ func (s *Server) HandlePasswordResetConfirm(c *gin.Context) {
 	token := c.DefaultQuery("token", "")
 
 	if token == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "token not provided",
-		})
+		c.JSON(stdhttp.StatusBadRequest, gin.H{"error": "token is required"})
 		return
 	}
 
 	var body dto.ResetPasswordConfirmRequest
 	if err := c.ShouldBindJSON(&body); err != nil {
 		if errors.Is(err, io.EOF) {
-			c.JSON(http.StatusBadRequest, gin.H{
+			c.JSON(stdhttp.StatusBadRequest, gin.H{
 				"error": "empty request body",
 			})
 			return
 		}
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(stdhttp.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -66,15 +64,13 @@ func (s *Server) HandlePasswordResetConfirm(c *gin.Context) {
 	defer cancel()
 
 	if body.NewPassword != body.NewPasswordConfirm {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "password not confirm",
-		})
+		c.JSON(stdhttp.StatusBadRequest, gin.H{"error": "passwords do not match"})
 		return
 	}
 
 	err := s.Auth.PasswordResetConfirm(ctx, token, body.NewPasswordConfirm)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(stdhttp.StatusBadRequest, gin.H{"error": err.Error()})
 	}
 
 }

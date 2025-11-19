@@ -1,8 +1,8 @@
-package handler
+package http
 
 import (
 	"log"
-	"net/http"
+	stdhttp "net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -39,13 +39,13 @@ func StartServer(authService *auth.Service) {
 		authorized.GET("/me", s.HandleMe)
 	}
 
-	srv := &http.Server{
+	srv := &stdhttp.Server{
 		Addr:    ":" + port,
 		Handler: r,
 	}
 
 	log.Printf("Server starting on port %s", port)
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := srv.ListenAndServe(); err != nil && err != stdhttp.ErrServerClosed {
 		log.Fatalf("listen: %s\n", err)
 	}
 }

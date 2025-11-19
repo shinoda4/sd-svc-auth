@@ -9,9 +9,9 @@ import (
 	"time"
 
 	config "github.com/shinoda4/sd-svc-auth/configs"
-	"github.com/shinoda4/sd-svc-auth/internal/handler"
 	"github.com/shinoda4/sd-svc-auth/internal/repo"
 	"github.com/shinoda4/sd-svc-auth/internal/service/auth"
+	handler "github.com/shinoda4/sd-svc-auth/internal/transport/http"
 	"github.com/shinoda4/sd-svc-auth/pkg/logger"
 )
 
