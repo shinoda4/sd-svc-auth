@@ -13,9 +13,9 @@ import (
 	"github.com/shinoda4/sd-svc-auth/pkg/email"
 )
 
-func (s *Service) PasswordReset(ctx context.Context, email_addr string, username string) error {
+func (s *Service) PasswordReset(ctx context.Context, emailAddr string, username string) error {
 
-	user, err := s.db.GetUserByEmail(ctx, email_addr)
+	user, err := s.db.GetUserByEmail(ctx, emailAddr)
 	if err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ func (s *Service) PasswordReset(ctx context.Context, email_addr string, username
 		username, fullLink,
 	)
 
-	return email.SendEmail(emailAddress, email_addr, "Reset your password!", body)
+	return email.SendEmail(emailAddress, emailAddr, "Reset your password!", body)
 }
 
 func (s *Service) PasswordResetConfirm(ctx context.Context, token, newPassword string) error {
