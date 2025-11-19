@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	config "github.com/shinoda4/sd-svc-auth/configs"
+	"github.com/shinoda4/sd-svc-auth/internal/config"
 	"github.com/shinoda4/sd-svc-auth/internal/repo"
 	"github.com/shinoda4/sd-svc-auth/internal/service/auth"
 	handler "github.com/shinoda4/sd-svc-auth/internal/transport/http"
