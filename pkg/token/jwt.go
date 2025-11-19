@@ -73,14 +73,14 @@ func generateToken(userID, email string, duration time.Duration, tokenType strin
 	return ss, duration, nil
 }
 func ParseAndValidate(tokenStr string) (*Claims, error) {
-	return parseToken(tokenStr)
+	return ParseToken(tokenStr)
 }
 
 func ParseAndValidateRefresh(tokenStr string) (*Claims, error) {
-	return parseToken(tokenStr)
+	return ParseToken(tokenStr)
 }
 
-func parseToken(tokenStr string) (*Claims, error) {
+func ParseToken(tokenStr string) (*Claims, error) {
 	tok, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("unexpected signing method")

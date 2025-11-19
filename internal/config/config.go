@@ -30,7 +30,7 @@ func MustLoad() *Config {
 	}
 
 	// 统一检查缺失变量
-	missing := []string{}
+	var missing []string
 	for _, env := range required {
 		if os.Getenv(env) == "" {
 			missing = append(missing, env)
