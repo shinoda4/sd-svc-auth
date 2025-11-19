@@ -8,9 +8,10 @@ import (
 	"syscall"
 	"time"
 
-	config "github.com/shinoda4/sd-svc-auth/configs"
+	"github.com/shinoda4/sd-svc-auth/internal/config"
 	"github.com/shinoda4/sd-svc-auth/internal/repo"
 	"github.com/shinoda4/sd-svc-auth/internal/service/auth"
+	"github.com/shinoda4/sd-svc-auth/internal/transport/grpc"
 	handler "github.com/shinoda4/sd-svc-auth/internal/transport/http"
 	"github.com/shinoda4/sd-svc-auth/pkg/logger"
 )
@@ -40,8 +41,9 @@ func main() {
 
 	authService := auth.NewAuthService(db, cache)
 
-	// 启动 HTTP 服务
-	go handler.StartServer(authService)
+	go grpc.RunGRPCServer(authService) // gRPC server
+
+	go handler.StartServer(authService) // Http server
 
 	// 优雅关闭
 	sig := make(chan os.Signal, 1)
