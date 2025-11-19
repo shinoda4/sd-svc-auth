@@ -1,4 +1,4 @@
-include configs/.env.example
+include ./.env.example
 export
 
 
