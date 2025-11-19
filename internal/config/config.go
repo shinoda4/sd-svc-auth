@@ -22,7 +22,6 @@ func MustLoad() *Config {
 		"DATABASE_DSN",
 		"REDIS_ADDR",
 		"SERVER_HOST",
-		"SERVER_PORT",
 		"GRPC_PORT",
 		"JWT_SECRET",
 		"EMAIL_ADDRESS",
@@ -46,7 +45,6 @@ func MustLoad() *Config {
 		RedisAddr:     os.Getenv("REDIS_ADDR"),
 		RedisPassword: os.Getenv("REDIS_PASSWORD"), // 可选
 		ServerHost:    os.Getenv("SERVER_HOST"),
-		ServerPort:    os.Getenv("SERVER_PORT"),
 		GrpcPort:      os.Getenv("GRPC_PORT"),
 		JWTSecret:     os.Getenv("JWT_SECRET"),
 		EmailAddress:  os.Getenv("EMAIL_ADDRESS"),
