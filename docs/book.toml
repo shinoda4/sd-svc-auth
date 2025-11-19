@@ -4,7 +4,7 @@ language = "en"
 src = "src"
 title = "SD-SVC-AUTH"
 
-[preprocessor.toc]
-command = "mdbook-toc"
-renderer = ["html"]
-marker = "[[toc]]"
+# [preprocessor.toc]
+# command = "mdbook-toc"
+# renderer = ["html"]
+# marker = "[[toc]]"
