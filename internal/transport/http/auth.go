@@ -1,11 +1,11 @@
-package handler
+package http
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
+	stdhttp "net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -21,13 +21,13 @@ func (s *Server) HandleRegister(c *gin.Context) {
 	var body dto.RegisterRequest
 	if err := c.ShouldBindJSON(&body); err != nil {
 		if errors.Is(err, io.EOF) {
-			c.JSON(http.StatusBadRequest, gin.H{
+			c.JSON(stdhttp.StatusBadRequest, gin.H{
 				"error": "empty request body",
 			})
 			return
 		}
 
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(stdhttp.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
@@ -44,28 +44,27 @@ func (s *Server) HandleRegister(c *gin.Context) {
 	if err != nil {
 		var e *repo.ErrUserExists
 		if errors.As(err, &e) {
-			c.JSON(http.StatusConflict, gin.H{"error": "register email exists", "details": e.Email})
+			c.JSON(stdhttp.StatusConflict, gin.H{"error": "email already exists", "details": e.Email})
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "register failed", "details": err.Error()})
+			c.JSON(stdhttp.StatusInternalServerError, gin.H{"error": "register failed", "details": err.Error()})
 		}
 		return
 	}
 
-	resp := dto.RegisterResponse{
+	c.JSON(stdhttp.StatusCreated, dto.RegisterResponse{
 		Message:     "registered",
 		VerifyToken: verifyToken,
-	}
-	c.JSON(http.StatusCreated, resp)
+	})
 }
 
 func (s *Server) HandleLogin(c *gin.Context) {
 	var body dto.LoginRequest
 	if err := c.ShouldBindJSON(&body); err != nil {
 		if errors.Is(err, io.EOF) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "empty request body"})
+			c.JSON(stdhttp.StatusBadRequest, gin.H{"error": "empty request body"})
 			return
 		}
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(stdhttp.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -74,32 +73,30 @@ func (s *Server) HandleLogin(c *gin.Context) {
 
 	accessToken, refreshToken, accessTTL, refreshTTL, err := s.Auth.Login(ctx, body.Email, body.Password)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		c.JSON(stdhttp.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
 
-	resp := dto.LoginResponse{
+	c.JSON(stdhttp.StatusOK, dto.LoginResponse{
 		AccessToken:      accessToken,
 		RefreshToken:     refreshToken,
 		ExpiresIn:        int(accessTTL.Seconds()),
 		RefreshExpiresIn: int(refreshTTL.Seconds()),
-	}
-
-	c.JSON(http.StatusOK, resp)
+	})
 }
 
 func (s *Server) HandleLogout(c *gin.Context) {
 	h := c.GetHeader("Authorization")
 	if len(h) < 7 || h[:7] != "Bearer " {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid token format"})
+		c.JSON(stdhttp.StatusBadRequest, gin.H{"error": "invalid token format"})
 		return
 	}
 	token := h[7:] // 去掉 "Bearer " 前缀
 
 	if err := s.Auth.Logout(c.Request.Context(), token); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(stdhttp.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "logout successful"})
+	c.JSON(stdhttp.StatusOK, gin.H{"message": "logout successful"})
 }

@@ -1,8 +1,8 @@
-package handler
+package http
 
 import (
 	"context"
-	"net/http"
+	stdhttp "net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,7 +11,7 @@ import (
 func (s *Server) HandleVerifyEmail(c *gin.Context) {
 	token := c.Query("token")
 	if token == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing token"})
+		c.JSON(stdhttp.StatusBadRequest, gin.H{"error": "token is required"})
 		return
 	}
 
@@ -23,9 +23,9 @@ func (s *Server) HandleVerifyEmail(c *gin.Context) {
 	defer cancel()
 
 	if err := s.Auth.VerifyEmail(ctx, token, sendEmailBool); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(stdhttp.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "email verified successfully"})
+	c.JSON(stdhttp.StatusOK, gin.H{"message": "email verified"})
 }

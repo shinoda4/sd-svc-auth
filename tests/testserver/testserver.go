@@ -2,9 +2,9 @@ package testserver
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/shinoda4/sd-svc-auth/internal/handler"
 	"github.com/shinoda4/sd-svc-auth/internal/repo"
 	auth2 "github.com/shinoda4/sd-svc-auth/internal/service/auth"
+	handler "github.com/shinoda4/sd-svc-auth/internal/transport/http"
 )
 
 func SetupFullTestServer() *gin.Engine {
