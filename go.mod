@@ -2,6 +2,8 @@ module github.com/shinoda4/sd-svc-auth
 
 go 1.25.4
 
+replace github.com/shinoda4/sd-grpc-proto => ../sd-grpc-proto
+
 require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
@@ -9,7 +11,7 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/lib/pq v1.10.9
 	github.com/redis/go-redis/v9 v9.16.0
-	github.com/shinoda4/sd-grpc-proto v0.0.6
+	github.com/shinoda4/sd-grpc-proto v0.0.7
 	golang.org/x/crypto v0.44.0
 	google.golang.org/grpc v1.77.0
 	google.golang.org/protobuf v1.36.10
