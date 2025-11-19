@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 	"os"
 
@@ -42,5 +43,9 @@ func StartServer(authService *auth.Service) {
 		Addr:    ":" + port,
 		Handler: r,
 	}
-	_ = srv.ListenAndServe()
+
+	log.Printf("Server starting on port %s", port)
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatalf("listen: %s\n", err)
+	}
 }
