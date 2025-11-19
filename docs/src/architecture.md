@@ -12,7 +12,8 @@ This project follows the **Standard Go Project Layout** and implements a **Clean
 ├── docs/               # Documentation (mdbook)
 ├── internal/           # Private application code
 │   ├── dto/            # Data Transfer Objects (API request/response structs)
-│   ├── handler/        # HTTP Handlers (Controller layer)
+│   ├── transport/      # Transport layer
+│   │   └── http/       # HTTP Handlers (Controller layer)
 │   ├── model/          # Domain models
 │   ├── repo/           # Data Access Layer (Repository pattern)
 │   └── service/        # Business Logic Layer
