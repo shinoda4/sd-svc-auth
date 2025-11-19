@@ -22,3 +22,6 @@ up:
 init-db:
 	# run init SQL (requires psql installed)
 	psql "$(DATABASE_DSN)" -f sql/init.sql -h 127.0.0.1
+
+doc:
+	mdbook serve -p 3000 ./docs
