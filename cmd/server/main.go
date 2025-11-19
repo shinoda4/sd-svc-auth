@@ -12,7 +12,6 @@ import (
 	"github.com/shinoda4/sd-svc-auth/internal/repo"
 	"github.com/shinoda4/sd-svc-auth/internal/service/auth"
 	"github.com/shinoda4/sd-svc-auth/internal/transport/grpc"
-	handler "github.com/shinoda4/sd-svc-auth/internal/transport/http"
 	"github.com/shinoda4/sd-svc-auth/pkg/logger"
 )
 
@@ -42,8 +41,8 @@ func main() {
 	authService := auth.NewAuthService(db, cache)
 
 	go grpc.RunGRPCServer(authService) // gRPC server
-
-	go handler.StartServer(authService) // Http server
+	go grpc.RunGateway()
+	//go handler.StartServer(authService) // Http server
 
 	// 优雅关闭
 	sig := make(chan os.Signal, 1)
