@@ -2,28 +2,28 @@
 
 ## Prerequisites
 
-- **Go**: Version 1.21 or higher
-- **PostgreSQL**: Version 13 or higher
-- **Redis**: Version 6 or higher
+- **Go**: Version 1.25.4 or higher
+- **PostgreSQL**: Version 17 or higher
+- **Redis**: Version 7 or higher
 
 ## Environment Variables
 
 The application relies on environment variables for configuration. You can set them directly in your shell or use a `.env` file.
 
-| Variable | Description | Required | Example |
-|----------|-------------|----------|---------|
-| `DATABASE_DSN` | PostgreSQL connection string | Yes | `postgres://user:pass@localhost:5432/db?sslmode=disable` |
-| `REDIS_ADDR` | Redis address | Yes | `localhost:6379` |
-| `REDIS_PASSWORD` | Redis password | No | `secret` |
-| `SERVER_HOST` | Server hostname for links | Yes | `localhost` or `https://api.example.com` |
-| `SERVER_PORT` | Legacy server port | Yes | `8080` |
-| `HTTP_PORT` | HTTP gateway port | Yes | `8080` |
-| `GRPC_PORT` | gRPC server port | Yes | `50051` |
-| `JWT_SECRET` | Secret key for signing tokens | Yes | `your-256-bit-secret` |
-| `JWT_EXPIRE_HOURS` | Token expiration in hours | No | `72` (default) |
-| `EMAIL_ADDRESS` | SMTP email address | Yes | `noreply@example.com` |
-| `EMAIL_PASSWORD` | SMTP email password | Yes | `smtp-password` |
-| `RESET_PASSWORD_URL` | Password reset URL | Yes | `http://localhost:8080/api/v1/reset-password` |
+| Variable             | Description                   | Required | Example                                                  |
+| -------------------- | ----------------------------- | -------- | -------------------------------------------------------- |
+| `DATABASE_DSN`       | PostgreSQL connection string  | Yes      | `postgres://user:pass@localhost:5432/db?sslmode=disable` |
+| `REDIS_ADDR`         | Redis address                 | Yes      | `localhost:6379`                                         |
+| `REDIS_PASSWORD`     | Redis password                | No       | `secret`                                                 |
+| `SERVER_HOST`        | Server hostname for links     | Yes      | `localhost` or `https://api.example.com`                 |
+| `SERVER_PORT`        | Legacy server port            | Yes      | `8080`                                                   |
+| `HTTP_PORT`          | HTTP gateway port             | Yes      | `8080`                                                   |
+| `GRPC_PORT`          | gRPC server port              | Yes      | `50051`                                                  |
+| `JWT_SECRET`         | Secret key for signing tokens | Yes      | `your-256-bit-secret`                                    |
+| `JWT_EXPIRE_HOURS`   | Token expiration in hours     | No       | `72` (default)                                           |
+| `EMAIL_ADDRESS`      | SMTP email address            | Yes      | `noreply@example.com`                                    |
+| `EMAIL_PASSWORD`     | SMTP email password           | Yes      | `smtp-password`                                          |
+| `RESET_PASSWORD_URL` | Password reset URL            | Yes      | `http://localhost:8080/api/v1/reset-password`            |
 
 For detailed configuration information, see the [Configuration](./configuration.md) page.
 
@@ -34,26 +34,30 @@ For detailed configuration information, see the [Configuration](./configuration.
 1. **Start Dependencies**: Ensure PostgreSQL and Redis are running.
 
 2. **Set Environment**: Create a `.env` file based on `.env.example`:
+
    ```bash
    cp .env.example .env
    # Edit .env with your configuration
    ```
 
 3. **Run Database Migrations**:
+
    ```bash
    migrate -source file://db/migrations -database "$DATABASE_DSN" up
    ```
 
 4. **Run the Service**:
+
    ```bash
    # Using Make
    make run
-   
+
    # Or directly
    go run cmd/server/main.go
    ```
 
 The service will start:
+
 - **gRPC server** on port `50051` (or `$GRPC_PORT`)
 - **HTTP gateway** on port `8080` (or `$HTTP_PORT`)
 
@@ -205,25 +209,25 @@ spec:
         app: sd-svc-auth
     spec:
       containers:
-      - name: auth
-        image: sd-svc-auth:latest
-        ports:
-        - containerPort: 8080
-          name: http
-        - containerPort: 50051
-          name: grpc
-        env:
-        - name: DATABASE_DSN
-          valueFrom:
-            secretKeyRef:
-              name: auth-secrets
-              key: database-dsn
-        - name: JWT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: auth-secrets
-              key: jwt-secret
-        # ... other env vars
+        - name: auth
+          image: sd-svc-auth:latest
+          ports:
+            - containerPort: 8080
+              name: http
+            - containerPort: 50051
+              name: grpc
+          env:
+            - name: DATABASE_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secrets
+                  key: database-dsn
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: auth-secrets
+                  key: jwt-secret
+          # ... other env vars
 ```
 
 ## Health Checks
@@ -246,11 +250,13 @@ Recommended monitoring:
 ### Service Won't Start
 
 1. Check database connectivity:
+
    ```bash
    psql "$DATABASE_DSN"
    ```
 
 2. Check Redis connectivity:
+
    ```bash
    redis-cli -h <host> -p <port> ping
    ```
@@ -272,4 +278,3 @@ Recommended monitoring:
 - Ensure Redis is running
 - Verify Redis address and port
 - Check Redis password if authentication is enabled
-

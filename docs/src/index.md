@@ -22,7 +22,7 @@ The service handles the complexities of secure password storage, token managemen
 
 ## Technology Stack
 
-- **Language**: Go 1.21+
+- **Language**: Go 1.25.4+
 - **Protocol**: gRPC + grpc-gateway
 - **Database**: PostgreSQL
 - **Cache**: Redis
@@ -37,6 +37,7 @@ The service handles the complexities of secure password storage, token managemen
 4. **Start the service**: `make run` or `go run cmd/server/main.go`
 
 The service will start both:
+
 - gRPC server on port `50051` (default)
 - HTTP gateway on port `8080` (default)
 
