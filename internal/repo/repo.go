@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 
-package logger
+package repo
 
-import (
-	"log"
-)
+import "github.com/jmoiron/sqlx"
 
-func Init() {
-	// placeholder: use a structured logger in prod
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
+type Repo struct {
+	db *sqlx.DB
+}
+
+func (r *Repo) Close() {
+	err := r.db.Close()
+	if err != nil {
+		return
+	}
 }
