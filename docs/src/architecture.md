@@ -1,130 +1,99 @@
 # Architecture
 
-This project follows the **Standard Go Project Layout** and implements a **Clean Architecture** pattern to ensure separation of concerns, testability, and maintainability.
+`sd-svc-auth` follows the Standard Go Project Layout and applies Clean Architecture principles: external transports stay thin, business rules live in the service layer, and infrastructure (database, cache, email, token utilities) is pushed behind interfaces.
 
-## Directory Structure
+## Layered overview
 
 ```
-sd-svc-auth/
-├── cmd/
-│   └── server/           # Application entry point
-├── internal/             # Private application code
-│   ├── config/           # Configuration loading and management
-│   ├── model/            # Domain models (User entity)
-│   ├── repo/             # Data Access Layer (Repository pattern)
-│   │   ├── user.go       # User repository (PostgreSQL)
-│   │   └── redis.go      # Redis cache operations
-│   ├── service/          # Business Logic Layer
-│   │   └── auth/         # Authentication service
-│   └── transport/        # Transport layer
-│       └── grpc/         # gRPC server and HTTP gateway
-│           ├── server.go # gRPC server setup and interceptors
-│           ├── auth.go   # Authentication endpoints
-│           └── jwt.go    # JWT token endpoints
-├── pkg/                  # Public library code (utilities)
-│   ├── email/            # Email sending utility
-│   ├── logger/           # Logging utility
-│   └── token/            # JWT generation and validation
-├── db/                   # Database migrations
-├── docs/                 # Documentation (mdbook)
-└── deployments/          # Docker and deployment configs
+cmd/server/main.go
+        |
+        v
+internal/config.MustLoad()   pkg/logger.Init()
+        |
+        v
+internal/repo    <-- PostgreSQL + Redis adapters
+        |
+        v
+internal/service/auth        <-- business logic
+        |
+        v
+internal/transport/grpc      <-- gRPC server + HTTP gateway
 ```
 
-## Transport Layer
+- **cmd/server** wires configuration, repositories, and services, starts the gRPC server and HTTP gateway, and handles graceful shutdown.
+- **internal/config** validates required environment variables before the process advertises any listener.
+- **internal/repo** provides concrete implementations of `entity.UserRepository` (PostgreSQL via `sqlx`) and `entity.CacheRepository` (Redis). Password hashing uses bcrypt.
+- **internal/service/auth** hosts every use-case (register, verify email, login, token refresh, logout, password reset, token validation). The layer is written against the repository interfaces.
+- **internal/transport/grpc** exposes the service over gRPC, adds interceptors (logging + authentication), registers the grpc-gateway HTTP handler, and implements a lightweight health probe.
+- **pkg** holds shared helper packages (`token`, `email`, `logger`) that do not depend on application internals.
 
-The service uses a **gRPC-first architecture** with automatic HTTP/JSON API exposure:
+## Repository layer
 
-### gRPC Server
+- **PostgreSQL (`internal/repo/user_repo.go`)**
+  - Prevents duplicate registrations by checking `users.email`.
+  - Persists password hashes, verification tokens, and password-reset metadata.
+  - Provides helpers such as `GetUserByVerifyToken`, `SaveResetToken`, and `ClearResetToken`.
+- **Redis (`internal/repo/redis_cache.go`)**
+  - Stores refresh tokens (`token:<userID>`), enforces refresh-token reuse detection, and deletes entries on logout.
+  - Maintains an access-token blacklist (`blacklist:<token>`) for immediate revocation.
 
-- **Protocol**: Native gRPC using Protocol Buffers
-- **Service Definition**: `auth.v1.AuthService` (from `sd-grpc-proto`)
-- **Port**: Configurable via `GRPC_PORT` (default: 50051)
-- **Features**:
-  - Unary interceptors for logging and authentication
-  - Metadata-based authentication (Bearer tokens)
-  - Structured error handling with gRPC status codes
+## Service layer
 
-### HTTP Gateway
+Each method in `internal/service/auth` accepts a `context.Context` and coordinates repositories + helpers:
 
-- **Implementation**: [grpc-gateway](https://github.com/grpc-ecosystem/grpc-gateway)
-- **Port**: Configurable via `HTTP_PORT` (default: 8080)
-- **Features**:
-  - Automatic JSON ↔ Protobuf conversion
-  - RESTful-style HTTP endpoints
-  - Standard HTTP authentication (Authorization header)
+- **Register** – Creates the user, generates a verification token, stores it, and optionally sends an email through `pkg/email`.
+- **VerifyEmail** – Validates the token, marks the user verified, and can send a welcome email.
+- **Login** – Validates credentials, enforces email verification, issues an access/refresh token pair via `pkg/token`, and caches the refresh token in Redis.
+- **Refresh** – Validates the refresh token, ensures it matches the cached value, and issues a new access token.
+- **Logout** – Adds access tokens to the blacklist or clears refresh tokens, depending on the token type.
+- **PasswordReset**/**PasswordResetConfirm** – Issues random reset tokens, emails reset links using `RESET_PASSWORD_URL`, updates the password, then clears reset secrets.
+- **ValidateToken**/**Me** – Helper endpoints that surface the JWT claims for clients.
 
-### Authentication Interceptor
+## Transport layer
 
-The gRPC server includes a custom authentication interceptor that:
+### gRPC server
 
-1. **Whitelists** public endpoints (Register, Login, VerifyEmail, ForgotPassword, ResetPassword)
-2. **Validates** JWT tokens from metadata for protected endpoints
-3. **Injects** claims into the request context for downstream handlers
-4. **Returns** appropriate gRPC error codes for authentication failures
+- Implements `authpb.AuthServiceServer` (generated from `github.com/shinoda4/sd-grpc-proto/proto/auth/v1`).
+- Listens on `:$GRPC_PORT` and shares a chain of interceptors:
+  - **Logging interceptor** – emits the method name and error (if any).
+  - **Auth interceptor** – skips public RPCs (`Register`, `Login`, `VerifyEmail`, `ForgotPassword`, `ResetPassword`, `HealthCheck`) and enforces Bearer tokens everywhere else. Valid JWT claims are injected into the context under `claims`.
+- Provides a lightweight `HealthCheck` RPC that returns `"ok"` and is whitelisted from authentication.
 
-## Design Patterns
+### HTTP gateway
 
-### Repository Pattern
+- Built with `grpc-gateway/runtime.ServeMux`.
+- Dials the gRPC server locally and forwards requests using the `google.api.http` annotations defined in the proto.
+- Listens on `:$HTTP_PORT` (default 8080) and exposes REST endpoints under `/api/v1/*`.
 
-The data access layer (`internal/repo`) abstracts the underlying database and cache technologies. This allows the business logic to depend on interfaces rather than concrete implementations, making it easier to mock data sources for testing or switch databases in the future.
+## Data flow examples
 
-**Repositories**:
-- `UserRepo`: PostgreSQL-based user data persistence
-- `RedisCache`: Token blacklist and caching operations
+### Login
 
-### Service Layer
+1. Client issues `Login` (gRPC or HTTP) with email/password.
+2. Transport maps the request to `service.Login`.
+3. Service fetches the user, checks bcrypt hash, verifies `email_verified`, generates tokens, caches refresh token.
+4. Transport converts the response into Protobuf timestamps / JSON datetimes.
 
-The service layer (`internal/service`) contains the core business logic. It orchestrates data flow between the transport handlers and the repositories. It is responsible for:
+### Refresh
 
-- Input validation
-- Business rule enforcement
-- Transaction management
-- Coordinating between multiple repositories
-- Token generation and validation
+1. Client calls `RefreshToken` with a Bearer refresh token.
+2. Auth interceptor validates the JWT and attaches claims.
+3. `service.Refresh` ensures the supplied token matches the cached version, then issues a new access token.
 
-### Dependency Injection
+### Password reset
 
-Dependencies (like database connections, cache clients, and services) are injected into the components that need them. This promotes loose coupling and makes unit testing straightforward.
+1. `ForgotPassword` validates the username/email pair and writes a random 64-char hex token plus an expiry to PostgreSQL.
+2. An email is sent via SMTP using `EMAIL_ADDRESS`/`EMAIL_PASSWORD`.
+3. `ResetPassword` checks the token, ensures it has not expired, updates the stored hash, and clears reset metadata.
 
-**Dependency Flow**:
-```
-main.go
-  ↓
-  ├─→ UserRepo (PostgreSQL)
-  ├─→ RedisCache
-  ↓
-AuthService (injected with repos)
-  ↓
-gRPC Server (injected with service)
-```
+## Error handling
 
-## Data Flow
+- The service layer returns typed errors (`service.ErrInvalidPassword`, `service.ErrEmailNotVerified`, etc.). The transport layer maps them to gRPC status codes, which grpc-gateway translates to HTTP responses.
+- Repository errors are wrapped with context (e.g., `insert user`, `query user`) to simplify troubleshooting.
+- JWT parsing/validation errors surface as `codes.Unauthenticated`.
 
-### Authentication Flow (Login)
+## Observability hooks
 
-1. **Client** sends credentials via gRPC or HTTP
-2. **Transport Layer** (gRPC handler) receives request
-3. **Service Layer** validates credentials and generates tokens
-4. **Repository Layer** queries database and updates cache
-5. **Response** returns access and refresh tokens to client
-
-### Protected Endpoint Flow
-
-1. **Client** sends request with Bearer token
-2. **Interceptor** extracts and validates token
-3. **Claims** injected into context
-4. **Handler** processes request with user context
-5. **Response** returned to client
-
-## Error Handling
-
-The service uses gRPC status codes for consistent error handling:
-
-- `codes.InvalidArgument`: Invalid input data
-- `codes.Unauthenticated`: Missing or invalid authentication
-- `codes.AlreadyExists`: Duplicate user registration
-- `codes.NotFound`: User not found
-- `codes.Internal`: Server errors
-
-These are automatically converted to appropriate HTTP status codes by grpc-gateway.
-
+- `pkg/logger.Init()` configures standard library logging with timestamps + file names.
+- The gRPC logging interceptor reports method names and errors.
+- Docker/Kubernetes deployments can hook into the `HealthCheck` RPC or add an HTTP `/health` handler in front of the gateway if needed.

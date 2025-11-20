@@ -1,197 +1,106 @@
 # Deployment
 
+This guide walks through running `sd-svc-auth` locally, in containers, and in Kubernetes. All commands assume you are in the project root (`/Users/carl/sd-system/sd-svc-auth`).
+
 ## Prerequisites
 
-- **Go**: Version 1.25.4 or higher
-- **PostgreSQL**: Version 17 or higher
-- **Redis**: Version 7 or higher
+- Go **1.25.4** or newer
+- PostgreSQL **17** (or compatible)
+- Redis **7**
+- [`golang-migrate`](https://github.com/golang-migrate/migrate) CLI
+- [`mdbook`](https://rust-lang.github.io/mdBook/) (optional, for docs)
+- Docker + Docker Compose (optional)
 
-## Environment Variables
+## Environment
 
-The application relies on environment variables for configuration. You can set them directly in your shell or use a `.env` file.
-
-| Variable             | Description                   | Required | Example                                                  |
-| -------------------- | ----------------------------- | -------- | -------------------------------------------------------- |
-| `DATABASE_DSN`       | PostgreSQL connection string  | Yes      | `postgres://user:pass@localhost:5432/db?sslmode=disable` |
-| `REDIS_ADDR`         | Redis address                 | Yes      | `localhost:6379`                                         |
-| `REDIS_PASSWORD`     | Redis password                | No       | `secret`                                                 |
-| `SERVER_HOST`        | Server hostname for links     | Yes      | `localhost` or `https://api.example.com`                 |
-| `SERVER_PORT`        | Legacy server port            | Yes      | `8080`                                                   |
-| `HTTP_PORT`          | HTTP gateway port             | Yes      | `8080`                                                   |
-| `GRPC_PORT`          | gRPC server port              | Yes      | `50051`                                                  |
-| `JWT_SECRET`         | Secret key for signing tokens | Yes      | `your-256-bit-secret`                                    |
-| `JWT_EXPIRE_HOURS`   | Token expiration in hours     | No       | `72` (default)                                           |
-| `EMAIL_ADDRESS`      | SMTP email address            | Yes      | `noreply@example.com`                                    |
-| `EMAIL_PASSWORD`     | SMTP email password           | Yes      | `smtp-password`                                          |
-| `RESET_PASSWORD_URL` | Password reset URL            | Yes      | `http://localhost:8080/api/v1/reset-password`            |
-
-For detailed configuration information, see the [Configuration](./configuration.md) page.
-
-## Running the Application
-
-### Local Development
-
-1. **Start Dependencies**: Ensure PostgreSQL and Redis are running.
-
-2. **Set Environment**: Create a `.env` file based on `.env.example`:
-
+1. Copy the sample file:
    ```bash
    cp .env.example .env
-   # Edit .env with your configuration
    ```
-
-3. **Run Database Migrations**:
-
+2. Fill in database, Redis, JWT, and email secrets (see [Configuration](./configuration.md)).
+3. Export the variables before running the service:
    ```bash
-   migrate -source file://db/migrations -database "$DATABASE_DSN" up
+   export $(grep -v '^#' .env | xargs)
    ```
 
-4. **Run the Service**:
+## Database migrations
 
-   ```bash
-   # Using Make
-   make run
-
-   # Or directly
-   go run cmd/server/main.go
-   ```
-
-The service will start:
-
-- **gRPC server** on port `50051` (or `$GRPC_PORT`)
-- **HTTP gateway** on port `8080` (or `$HTTP_PORT`)
-
-### Using Make Commands
-
-```bash
-# Build binary
-make build
-
-# Run service
-make run
-
-# Run tests
-make test
-
-# Build Docker image
-make docker
-
-# Start with Docker Compose
-make up
-
-# Initialize database
-make init-db
-```
-
-### Docker
-
-#### Build and Run
-
-```bash
-# Build image
-docker build -t sd-svc-auth:latest .
-
-# Run container
-docker run -p 8080:8080 -p 50051:50051 \
-  -e DATABASE_DSN="postgres://..." \
-  -e REDIS_ADDR="redis:6379" \
-  -e JWT_SECRET="your-secret" \
-  sd-svc-auth:latest
-```
-
-#### Docker Compose
-
-```bash
-# Start all services
-docker-compose -f deployments/docker-compose.yml up -d
-
-# View logs
-docker-compose -f deployments/docker-compose.yml logs -f
-
-# Stop services
-docker-compose -f deployments/docker-compose.yml down
-```
-
-## Database Setup
-
-### Migrations
-
-The service uses `golang-migrate` for database migrations.
-
-#### Install golang-migrate
-
-```bash
-# macOS
-brew install golang-migrate
-
-# Linux
-curl -L https://github.com/golang-migrate/migrate/releases/download/v4.15.2/migrate.linux-amd64.tar.gz | tar xvz
-sudo mv migrate /usr/local/bin/
-```
-
-#### Run Migrations
+Run migrations anytime the schema changes:
 
 ```bash
 migrate -source file://db/migrations -database "$DATABASE_DSN" up
 ```
 
-#### Create New Migration
+You can run the helper script that ships with the repo:
 
 ```bash
-migrate create -ext sql -dir db/migrations -seq add_new_field
+sh scripts/migrate.sh
 ```
 
-### Manual Schema Setup
-
-If not using migrations, create the schema manually:
-
-```sql
-CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    username VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
-    email_verified BOOLEAN DEFAULT FALSE,
-    verify_token VARCHAR(255),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-## Production Deployment
-
-### Security Checklist
-
-- [ ] Use strong `JWT_SECRET` (minimum 32 characters)
-- [ ] Enable SSL/TLS for PostgreSQL (`sslmode=require`)
-- [ ] Use Redis password authentication
-- [ ] Set appropriate `JWT_EXPIRE_HOURS` (24-72 hours recommended)
-- [ ] Use app-specific passwords for email
-- [ ] Configure proper firewall rules
-- [ ] Enable HTTPS for HTTP gateway
-- [ ] Use TLS for gRPC in production
-
-### Environment Configuration
-
-Create a production `.env` file with secure values:
+## Local development
 
 ```bash
-DATABASE_DSN=postgres://auth_user:strong_password@db.example.com:5432/auth_prod?sslmode=require
-REDIS_ADDR=redis.example.com:6379
-REDIS_PASSWORD=redis_strong_password
-SERVER_HOST=https://api.example.com
-HTTP_PORT=8080
-GRPC_PORT=50051
-JWT_SECRET=<generated-with-openssl-rand-base64-32>
-JWT_EXPIRE_HOURS=24
-EMAIL_ADDRESS=noreply@example.com
-EMAIL_PASSWORD=smtp_app_password
-RESET_PASSWORD_URL=https://app.example.com/reset-password
+# Compile once
+make build
+
+# Run with hot reload (rebuilds on code change)
+make run
+
+# Run the compiled binary plus dependency checks
+make deploy-local   # executes scripts/essential.sh → wait-for-deps → migrate → ./bin/sd-svc-auth
 ```
 
-### Kubernetes Deployment
+The Makefile also exposes:
 
-Example Kubernetes deployment:
+| Target                                | Description                                   |
+| ------------------------------------- | --------------------------------------------- |
+| `make test`                           | Run Go tests in `./tests/...`                 |
+| `make docs`                           | Serve mdBook docs on port 3000                |
+| `make docker-build`                   | Build the image `shinoda4/sd-svc-auth:latest` |
+| `make docker-up` / `make docker-down` | Start/stop Docker Compose stack               |
+
+## Running the transports
+
+After `make run` (or executing `go run ./cmd/server`):
+
+- **gRPC** is available on `localhost:$GRPC_PORT` (default `50051`).
+- **HTTP gateway** is available on `http://localhost:$HTTP_PORT` (default `8080`).
+
+Health probe:
+
+```bash
+grpcurl -plaintext localhost:50051 auth.v1.AuthService.HealthCheck
+```
+
+## Docker workflow
+
+```bash
+make docker-build
+docker run \
+  -p 8080:8080 \
+  -p 50051:50051 \
+  --env-file .env \
+  sd-svc-auth:latest
+```
+
+### Docker Compose
+
+`deployments/docker-compose.yml` spins up PostgreSQL, Redis, and the service:
+
+```bash
+docker-compose -f deployments/docker-compose.yml up -d
+docker-compose -f deployments/docker-compose.yml logs -f sd-svc-auth
+docker-compose -f deployments/docker-compose.yml down
+```
+
+Compose ships with helper scripts:
+
+- `scripts/wait-for-deps.sh` – waits for PostgreSQL/Redis readiness.
+- `scripts/run.sh` – runs dependency checks, migrations, then executes the binary inside the container.
+
+## Kubernetes outline
+
+Use the Docker image and mount environment variables via secrets:
 
 ```yaml
 apiVersion: apps/v1
@@ -210,71 +119,30 @@ spec:
     spec:
       containers:
         - name: auth
-          image: sd-svc-auth:latest
+          image: shinoda4/sd-svc-auth:latest
           ports:
             - containerPort: 8080
               name: http
             - containerPort: 50051
               name: grpc
-          env:
-            - name: DATABASE_DSN
-              valueFrom:
-                secretKeyRef:
-                  name: auth-secrets
-                  key: database-dsn
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: auth-secrets
-                  key: jwt-secret
-          # ... other env vars
+          envFrom:
+            - secretRef:
+                name: sd-svc-auth-env
 ```
 
-## Health Checks
-
-The service doesn't currently expose health check endpoints. Consider adding:
-
-- `/health` for HTTP gateway
-- gRPC health check service
-
-## Monitoring
-
-Recommended monitoring:
-
-- **Metrics**: Prometheus metrics for request counts, latency, errors
-- **Logging**: Structured logging to stdout (captured by container runtime)
-- **Tracing**: OpenTelemetry for distributed tracing
+Expose `8080` through an Ingress/Service for HTTP clients and `50051` through a ClusterIP or headless service for gRPC peers. Add a gRPC health probe or an HTTP `/health` handler if required by your platform.
 
 ## Troubleshooting
 
-### Service Won't Start
+| Symptom                                                     | Checks                                                                                                             |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Process exits with `missing required environment variables` | `env \| grep -E 'DATABASE_DSN\|REDIS_ADDR\|HTTP_PORT'`                                                             |
+| gRPC cannot bind                                            | Ensure `$GRPC_PORT` is free (`lsof -i :50051`).                                                                    |
+| Login returns `invalid password`                            | Confirm bcrypt hashes via `psql` and ensure `email_verified` is true.                                              |
+| Refresh token fails                                         | Verify Redis is reachable and contains `token:<userID>`.                                                           |
+| Emails are not sent                                         | Confirm `EMAIL_ADDRESS`/`EMAIL_PASSWORD`, network egress, and that Gmail app passwords are enabled if using Gmail. |
 
-1. Check database connectivity:
+## Next steps
 
-   ```bash
-   psql "$DATABASE_DSN"
-   ```
-
-2. Check Redis connectivity:
-
-   ```bash
-   redis-cli -h <host> -p <port> ping
-   ```
-
-3. Verify environment variables are set:
-   ```bash
-   env | grep -E 'DATABASE_DSN|REDIS_ADDR|JWT_SECRET'
-   ```
-
-### Database Connection Errors
-
-- Ensure PostgreSQL is running and accessible
-- Verify connection string format
-- Check firewall rules
-- Verify database user permissions
-
-### Redis Connection Errors
-
-- Ensure Redis is running
-- Verify Redis address and port
-- Check Redis password if authentication is enabled
+- Configure monitoring (logs, metrics, tracing) and add TLS termination suited to your environment.
+- Review [Database](./database.md) and [API Reference](./api_reference/index.md) for schema and contract details.
