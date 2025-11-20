@@ -1,0 +1,31 @@
+# redis-deployment.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine # 推荐使用特定版本和alpine变体
+          ports:
+            - containerPort: 6379
+          env:
+            # 🚨 设置密码（来自你的 sd-svc-auth-secret）
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sd-svc-auth-secret
+                  key: REDIS_PASSWORD
+          args: ["--requirepass", "$(REDIS_PASSWORD)"] # 使用环境变量设置密码
+          # ⚠️ 生产环境需要添加 Volume 卷进行数据持久化！

@@ -27,7 +27,7 @@ services:
       retries: 5
 
   sd-svc-auth:
-    platform: linux/amd64
+    # platform: linux/amd64
     image: shinoda4/sd-svc-auth:latest
     depends_on:
       - postgres

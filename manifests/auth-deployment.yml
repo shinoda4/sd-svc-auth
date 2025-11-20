@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sd-svc-auth
+  labels:
+    app: sd-svc-auth
+
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sd-svc-auth
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 3
+  template:
+    metadata:
+      labels:
+        app: sd-svc-auth
+
+    spec:
+      containers:
+        - name: sd-svc-auth
+          image: shinoda4/sd-svc-auth
+          imagePullPolicy: Always
+          ports:
+            - name: http-port # HTTP 端口
+              containerPort: 8080
+            - name: grpc-port # 💡 新增：gRPC 端口
+              containerPort: 50051
+          envFrom:
+            - configMapRef:
+                name: sd-svc-auth-configmap
+            - secretRef:
+                name: sd-svc-auth-secret

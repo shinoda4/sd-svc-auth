@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: sd-svc-auth-service
+
+spec:
+  selector:
+    app: sd-svc-auth
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+    - name: grpc # 💡 新增：gRPC 端口定义
+      port: 50051 # 外部 Pod 访问 sd-svc-auth-service:50051
+      targetPort: 50051 # 映射到容器内部的 50051 端口
+      protocol: TCP

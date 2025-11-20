@@ -1,0 +1,41 @@
+# postgres-deployment.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine # 推荐使用特定版本和alpine变体
+          ports:
+            - containerPort: 5432
+          env:
+            # 🚨 必须使用 POSTGRES_USER 和 POSTGRES_DB 环境变量来初始化数据库
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: sd-svc-auth-configmap
+                  key: POSTGRES_USER
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: sd-svc-auth-configmap
+                  key: POSTGRES_DB
+            # 🚨 密码应该来自 Secret
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sd-svc-auth-secret
+                  key: POSTGRES_PASSWORD
+          # ⚠️ 生产环境需要添加 Volume 卷进行数据持久化！
