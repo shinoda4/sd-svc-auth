@@ -39,6 +39,8 @@ func SendEmail(from string, to string, subject string, body string) error {
 		err := errors.New("EMAIL_ADDRESS environment variable not set")
 		return err
 	}
+
 	d := gomail.NewDialer("smtp.gmail.com", 587, emailAddress, emailPassword)
+
 	return d.DialAndSend(m)
 }

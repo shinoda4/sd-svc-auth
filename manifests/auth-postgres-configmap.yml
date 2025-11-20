@@ -1,0 +1,7 @@
+# postgres-configmap.yml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-configmap
+data:
+  POSTGRES_PORT: "5432"

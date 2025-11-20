@@ -1,0 +1,12 @@
+# postgres-service.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres # 💡 这是你的 sd-svc-auth Pod 中 DSN 访问的主机名！
+spec:
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+  type: ClusterIP

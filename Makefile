@@ -23,6 +23,13 @@ test:
 docker-build:
 	docker build --platform=linux/amd64 -t shinoda4/sd-svc-auth:latest .
 
+docker-build-multi:
+	docker buildx build \
+	--platform linux/amd64,linux/arm64 \
+	-t shinoda4/sd-svc-auth:latest \
+	--push \
+	.
+
 docker-up:
 	docker-compose -f deployments/docker-compose.yml up -d
 
@@ -37,3 +44,6 @@ init-db:
 
 docs:
 	mdbook serve -p 3000 ./docs
+
+kubectl-deploy:
+	kubectl delete -f ./manifests ; kubectl apply -f ./manifests

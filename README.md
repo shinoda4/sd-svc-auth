@@ -123,6 +123,7 @@ go run cmd/server/main.go
 ```
 
 The service will start:
+
 - **gRPC server** on port `50051` (default)
 - **HTTP gateway** on port `8080` (default)
 
@@ -135,6 +136,7 @@ The service provides both gRPC and HTTP/JSON APIs.
 **Service**: `auth.v1.AuthService`
 
 **Methods**:
+
 - `Register` - Register a new user
 - `Login` - Authenticate and receive tokens
 - `VerifyEmail` - Verify email address
@@ -167,17 +169,18 @@ The service provides both gRPC and HTTP/JSON APIs.
 - `POST /api/v1/forgot-password` - Request password reset
 - `POST /api/v1/reset-password` - Complete password reset
 
-
 ### Authentication
 
 Protected endpoints require a Bearer token in the `Authorization` header or gRPC metadata:
 
 **HTTP**:
+
 ```
 Authorization: Bearer <access_token>
 ```
 
 **gRPC**:
+
 ```
 authorization: Bearer <access_token>
 ```

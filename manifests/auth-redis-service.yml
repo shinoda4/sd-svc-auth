@@ -1,0 +1,12 @@
+# redis-service.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis # 💡 这是你的 sd-svc-auth Pod 中 REDIS_ADDR 访问的主机名！
+spec:
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+  type: ClusterIP
