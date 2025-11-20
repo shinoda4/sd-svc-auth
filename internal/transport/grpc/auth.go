@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	authpb "github.com/shinoda4/sd-grpc-proto/auth/v1"
+	authpb "github.com/shinoda4/sd-grpc-proto/proto/auth/v1"
 	"github.com/shinoda4/sd-svc-auth/pkg/token"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
