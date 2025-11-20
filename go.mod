@@ -10,7 +10,7 @@ require (
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/lib/pq v1.10.9
 	github.com/redis/go-redis/v9 v9.16.0
-	github.com/shinoda4/sd-grpc-proto v0.0.8
+	github.com/shinoda4/sd-grpc-proto v0.0.9
 	golang.org/x/crypto v0.44.0
 	google.golang.org/grpc v1.77.0
 	google.golang.org/protobuf v1.36.10

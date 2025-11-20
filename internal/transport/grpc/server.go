@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	authpb "github.com/shinoda4/sd-grpc-proto/auth/v1"
+	authpb "github.com/shinoda4/sd-grpc-proto/proto/auth/v1"
 	"github.com/shinoda4/sd-svc-auth/internal/service/auth"
 	"github.com/shinoda4/sd-svc-auth/pkg/token"
 	"google.golang.org/grpc"
@@ -85,6 +85,7 @@ func AuthInterceptor(authService *auth.Service) grpc.UnaryServerInterceptor {
 
 		// 白名单，不需要认证的 API
 		noAuthMethods := map[string]bool{
+			"/auth.v1.AuthService/HealthCheck":    true,
 			"/auth.v1.AuthService/Register":       true,
 			"/auth.v1.AuthService/VerifyEmail":    true,
 			"/auth.v1.AuthService/Login":          true,

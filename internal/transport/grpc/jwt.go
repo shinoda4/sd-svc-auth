@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	authpb "github.com/shinoda4/sd-grpc-proto/auth/v1"
+	authpb "github.com/shinoda4/sd-grpc-proto/proto/auth/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
