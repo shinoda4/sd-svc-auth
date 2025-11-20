@@ -4,13 +4,16 @@ export
 
 .PHONY: build run docker up init-db docs
 
+check:
+	sh scripts/essential.sh
+
 build:
 	go build -o bin/sd-svc-auth ./cmd/server
 
 run:
 	go run ./cmd/server
 
-deploy:
+deploy-local:
 	$(MAKE) build
 	sh scripts/run.sh
 
