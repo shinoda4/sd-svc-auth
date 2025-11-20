@@ -2,7 +2,10 @@ include ./.env.example
 export
 
 
-.PHONY: build run docker up init-db
+.PHONY: build run docker up init-db docs
+
+check:
+	sh scripts/essential.sh
 
 build:
 	go build -o bin/sd-svc-auth ./cmd/server
@@ -10,18 +13,27 @@ build:
 run:
 	go run ./cmd/server
 
+deploy-local:
+	$(MAKE) build
+	sh scripts/run.sh
+
 test:
 	go test ./tests/... -v
 
-docker:
-	docker build -t sd-svc-auth:local .
+docker-build:
+	docker build --platform=linux/amd64 -t shinoda4/sd-svc-auth:latest .
 
-up:
+docker-up:
 	docker-compose -f deployments/docker-compose.yml up -d
 
+docker-down:
+	docker compose -f deployments/docker-compose.yml down
+
+docker-down-v:
+	docker compose -f deployments/docker-compose.yml down -v
+
 init-db:
-	# run init SQL (requires psql installed)
 	psql "$(DATABASE_DSN)" -f sql/init.sql -h 127.0.0.1
 
-doc:
+docs:
 	mdbook serve -p 3000 ./docs
